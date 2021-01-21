@@ -19,9 +19,9 @@ go run go/path/src/github.com/jezek/xgb/examples/create-window/main.go
 
 jezek's Fork
 ============
-I've forked the XGB repository from BurntSushi's github to be used in other project.
-
-Will make some changes to tailor it for my needs.
+I've forked the XGB repository from BurntSushi's github to apply some
+patches which caused panics and memory leaks upon close and tests were added,
+to test multiple server close scenarios.
 
 BurntSushi's Fork
 =================
