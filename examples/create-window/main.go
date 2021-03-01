@@ -96,12 +96,22 @@ func main() {
 			fmt.Println("Both event and error are nil. Exiting...")
 			return
 		}
-
+		
 		if ev != nil {
 			fmt.Printf("Event: %s\n", ev)
 		}
 		if xerr != nil {
 			fmt.Printf("Error: %s\n", xerr)
+		}
+		
+		// This is how accepting events work:
+		// The application checks what event we got
+		// (the event must be registered using either xproto.CreateWindow (see l.35) or
+		//  xproto.ChangeWindowAttributes (see l.50)).
+		// and reacts to it accordingly. All events are defined in the xproto subpackage.
+		switch ev.(type) {
+		case xproto.DestroyNotifyEvent:
+			return // Exit if we get a DestroyNotifyEvent.
 		}
 	}
 }
