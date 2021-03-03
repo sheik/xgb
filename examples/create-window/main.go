@@ -49,7 +49,8 @@ func main() {
 			0xffffffff,
 			xproto.EventMaskStructureNotify |
 				xproto.EventMaskKeyPress |
-				xproto.EventMaskKeyRelease})
+				xproto.EventMaskKeyRelease,
+		})
 
 	// MapWindow makes the window we've created appear on the screen.
 	// We demonstrated the use of a 'checked' request here.
@@ -96,14 +97,14 @@ func main() {
 			fmt.Println("Both event and error are nil. Exiting...")
 			return
 		}
-		
+
 		if ev != nil {
 			fmt.Printf("Event: %s\n", ev)
 		}
 		if xerr != nil {
 			fmt.Printf("Error: %s\n", xerr)
 		}
-		
+
 		// This is how accepting events work:
 		// The application checks what event we got
 		// (the event must be registered using either xproto.CreateWindow (see l.35) or
@@ -115,8 +116,8 @@ func main() {
 			// for documentation about a key press event.
 			kpe := ev.(xproto.KeyPressEvent)
 			fmt.Printf("Key pressed: %d", kpe.Detail)
-			// The Detail value depends on the keyboard layout, 
-			// for QWERTY, q is #24. 
+			// The Detail value depends on the keyboard layout,
+			// for QWERTY, q is #24.
 			if kpe.Detail == 24 {
 				return // exit on q
 			}
