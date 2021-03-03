@@ -110,6 +110,16 @@ func main() {
 		//  xproto.ChangeWindowAttributes (see l.50)).
 		// and reacts to it accordingly. All events are defined in the xproto subpackage.
 		switch ev.(type) {
+		case xproto.KeyPressEvent:
+			// See https://pkg.go.dev/github.com/jezek/xgb@v0.0.0-20210121230032-cec22bda1ce1/xproto#KeyPressEvent
+			// for documentation about a key press event.
+			kpe := ev.(xproto.KeyPressEvent)
+			fmt.Printf("Key pressed: %d", kpe.Detail)
+			// The Detail value depends on the keyboard layout, 
+			// for QWERTY, q is #24. 
+			if kpe.Detail == 24 {
+				return // exit on q
+			}
 		case xproto.DestroyNotifyEvent:
 			return // Exit if we get a DestroyNotifyEvent.
 		}
