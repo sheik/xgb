@@ -41,11 +41,20 @@ func main() {
 	//
 	// But this time we'll be drawing some basic shapes:
 
-	// Create black (foreground) graphic context
+	// First of all we need to create a context to draw with.
+	// We can get a new context id using NewContextId()
+	// and have to initialize it with the values:
 	foreground, _ := xproto.NewGcontextId(X)
 	mask := uint32(xproto.GcForeground | xproto.GcGraphicsExposures)
 	values := []uint32{screen.BlackPixel, 0}
 	xproto.CreateGC(X, foreground, draw, mask, values)
+
+	// We can also create colored shapes by setting the first value
+	// when creating the graphics context:
+	red, _ := xproto.NewGcontextId(X)
+	// simply reuse the old mask but change the color value:
+	values[0] = 0xff0000
+	xproto.CreateGC(X, red, draw, mask, values)
 
 	points := []xproto.Point{
 		{X: 10, Y: 10},
@@ -54,12 +63,14 @@ func main() {
 		{X: 40, Y: 10},
 	}
 
-	// A polyline is essientially a line with multiple points:
+	// A polyline is essientially a line with multiple points.
+	// The first point is placed absolutely on the screen.
+	// The other points are relative to the one before them
 	polyline := []xproto.Point{
 		{X: 50, Y: 10},
-		{X: 5, Y: 20}, // rest of points are relative
-		{X: 25, Y: -20},
-		{X: 10, Y: 10},
+		{X: 5, Y: 20}, // move 5 to the right, 20 down
+		{X: 25, Y: -20}, // move 25 to the right, 20 up - notice how this point is level again with the first point
+		{X: 10, Y: 10}, // move 10 to the right, 10 down
 	}
 
 	segments := []xproto.Segment{
