@@ -109,9 +109,12 @@ func main() {
 	mask = uint32(xproto.GcForeground | xproto.GcBackground | xproto.GcFont)
 	values = []uint32{screen.BlackPixel, screen.WhitePixel, uint32(font)}
 	xproto.CreateGC(X, textCtx, draw, mask, values)
-	text := convertStringToChar2b("Hellö World!")
+	text := convertStringToChar2b("Hellö World!") // Unicode capable!
 
-	// In the end, writing text is way more comfortable using Xft - it supports TrueType,
+	// Close the font handle:
+	xproto.CloseFont(X, font)
+
+	// After all, writing text is way more comfortable using Xft - it supports TrueType,
 	// and overall better configuration.
 
 	points := []xproto.Point{
