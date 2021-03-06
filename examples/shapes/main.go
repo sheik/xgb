@@ -7,7 +7,7 @@ package main
 
 import (
 	"fmt"
-	"unicode/utf8"
+	"unicode/utf16"
 
 	"github.com/jezek/xgb"
 	"github.com/jezek/xgb/xproto"
@@ -209,20 +209,23 @@ func main() {
 
 func convertStringToChar2b(s string) []xproto.Char2b {
 	var chars []xproto.Char2b
-	var p []byte = make([]byte, 2)
+	var p []uint16
 
 	for _, r := range []rune(s) {
-		utf8.EncodeRune(p, r)
-		switch utf8.RuneLen(r) {
-		case 1:
-			chars = append(chars, xproto.Char2b{Byte1: 0, Byte2: p[0]})
-		case 2:
-			chars = append(chars, xproto.Char2b{Byte1: p[0], Byte2: p[1]})
-			fmt.Println(p[0], p[1])
-		default:
-			continue // skip all other characters
+		p = utf16.Encode([]rune{r})
+		if len(p) == 1 {
+			chars = append(chars, convertUint16ToChar2b(p[0]))
+		} else {
+			chars = append(chars, xproto.Char2b{Byte1: 0, Byte2: 32}) // add a blank instead
 		}
 	}
 
 	return chars
+}
+
+func convertUint16ToChar2b(u uint16) xproto.Char2b {
+	return xproto.Char2b{
+		Byte1: byte((u & 0xff00) >> 8),
+		Byte2: byte((u & 0x00ff)),
+	}
 }
