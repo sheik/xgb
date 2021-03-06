@@ -42,19 +42,35 @@ func main() {
 	// But this time we'll be drawing some basic shapes:
 
 	// First of all we need to create a context to draw with.
-	// We can get a new context id using NewContextId()
-	// and have to initialize it with the values:
+	// The graphics context combines all properties (e.g. color, line width, font, fill style, ...)
+	// that should be used to draw something. All available properties
+	//
+	// These properties can be set by or'ing their keys (xproto.Gc*)
+	// and adding the value to the end of the values array.
+	// The order in which the values have to be given corresponds to the order that they defined
+	// mentioned in `xproto`.
+	//
+	// Here we create a new graphics context
+	// which only has the foreground (color) value set to black:
 	foreground, _ := xproto.NewGcontextId(X)
-	mask := uint32(xproto.GcForeground | xproto.GcGraphicsExposures)
-	values := []uint32{screen.BlackPixel, 0}
+	mask := uint32(xproto.GcForeground)
+	values := []uint32{ screen.BlackPixel }
 	xproto.CreateGC(X, foreground, draw, mask, values)
 
-	// We can also create colored shapes by setting the first value
-	// when creating the graphics context:
+	// It is possible to set the foreground value to something different.
+	// In production, this should use xorg color maps instead for compatibility
+	// but for demonstration setting the color directly also works:
 	red, _ := xproto.NewGcontextId(X)
-	// simply reuse the old mask but change the color value:
-	values[0] = 0xff0000
+	mask = uint32(xproto.GcForeground)
+	values = []uint32{ 0xff0000 }
 	xproto.CreateGC(X, red, draw, mask, values)
+
+	// We'll create another graphics context that draws thick lines:
+	thick, _ := xproto.NewGcontextId(X)
+	mask = uint32(xproto.GcLineWidth)
+	values = []uint32{ 10 }
+	xproto.CreateGC(X, thick, draw, mask, values)
+
 
 	points := []xproto.Point{
 		{X: 10, Y: 10},
@@ -97,13 +113,13 @@ func main() {
 			xproto.PolyPoint(X, xproto.CoordModeOrigin, draw, foreground, points)
 
 			/* We draw the polygonal line */
-			xproto.PolyLine(X, xproto.CoordModePrevious, draw, foreground, polyline)
+			xproto.PolyLine(X, xproto.CoordModePrevious, draw, red, polyline)
 
 			/* We draw the segments */
-			xproto.PolySegment(X, draw, foreground, segments)
+			xproto.PolySegment(X, draw, thick, segments)
 
 			/* We draw the rectangles */
-			xproto.PolyRectangle(X, draw, foreground, rectangles)
+			xproto.PolyRectangle(X, draw, red, rectangles)
 
 			/* We draw the arcs */
 			xproto.PolyArc(X, draw, foreground, arcs)
