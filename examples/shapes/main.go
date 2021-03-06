@@ -121,6 +121,10 @@ func main() {
 		{X: 80, Y: 50, Width: 10, Height: 40},
 	}
 
+	// This rectangle we will use to demonstrate filling a shape.
+	rectangles2 := []xproto.Rectangle{
+		{X: 150, Y: 50, Width: 20, Height: 60},
+	}
 
 	// Arcs are defined by a top left position (notice where the third line goes to)
 	// their width and height, a starting and end angle.
@@ -162,6 +166,9 @@ func main() {
 
 			// Draw the circular arcs in blue.
 			xproto.PolyArc(X, draw, blue, arcs)
+
+			// There's also a fill variant for all drawing commands:
+			xproto.PolyFillRectangle(X, draw, red, rectangles2)
 
 		case xproto.DestroyNotifyEvent:
 			return
