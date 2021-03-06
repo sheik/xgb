@@ -7,6 +7,7 @@ package main
 
 import (
 	"fmt"
+	"unicode/utf8"
 
 	"github.com/jezek/xgb"
 	"github.com/jezek/xgb/xproto"
@@ -27,7 +28,7 @@ func main() {
 
 	// Create the window
 	xproto.CreateWindow(X, screen.RootDepth, wid, screen.Root,
-		0, 0, 180, 160, 8, // X, Y, width, height, *border width*
+		0, 0, 180, 200, 8, // X, Y, width, height, *border width*
 		xproto.WindowClassInputOutput, screen.RootVisual,
 		xproto.CwBackPixel|xproto.CwEventMask,
 		[]uint32{screen.WhitePixel, xproto.EventMaskStructureNotify | xproto.EventMaskExposure})
@@ -91,6 +92,27 @@ func main() {
 	mask = uint32(xproto.GcLineWidth | xproto.GcCapStyle)
 	values = []uint32{3, xproto.CapStyleRound}
 	xproto.ChangeGC(X, foreground, mask, values)
+
+	// Writing text needs a bit more setup -- we first have
+	// to open the required font.
+	// For all available fonts, install and run xfontsel.
+	font, _ := xproto.NewFontId(X)
+	fontname := "-gnu-unifont-*-*-*-*-16-*-*-*-*-*-*-*"
+	err = xproto.OpenFontChecked(X, font, uint16(len(fontname)), fontname).Check()
+	if err != nil {
+		fmt.Println("Failed opening the font:", err)
+		return
+	}
+
+	// And create a context from it. We simply pass the font's ID to the GcFont property.
+	textCtx, _ := xproto.NewGcontextId(X)
+	mask = uint32(xproto.GcForeground | xproto.GcBackground | xproto.GcFont)
+	values = []uint32{screen.BlackPixel, screen.WhitePixel, uint32(font)}
+	xproto.CreateGC(X, textCtx, draw, mask, values)
+	text := convertStringToChar2b("Hellö World!")
+
+	// In the end, writing text is way more comfortable using Xft - it supports TrueType,
+	// and overall better configuration.
 
 	points := []xproto.Point{
 		{X: 10, Y: 10},
@@ -171,6 +193,9 @@ func main() {
 			// There's also a fill variant for all drawing commands:
 			xproto.PolyFillRectangle(X, draw, red, rectangles2)
 
+			// Draw the text:
+			xproto.ImageText16(X, byte(len(text)), draw, textCtx, 10, 160, text)
+
 		case xproto.DestroyNotifyEvent:
 			return
 		}
@@ -180,4 +205,24 @@ func main() {
 			return
 		}
 	}
+}
+
+func convertStringToChar2b(s string) []xproto.Char2b {
+	var chars []xproto.Char2b
+	var p []byte = make([]byte, 2)
+
+	for _, r := range []rune(s) {
+		utf8.EncodeRune(p, r)
+		switch utf8.RuneLen(r) {
+		case 1:
+			chars = append(chars, xproto.Char2b{Byte1: 0, Byte2: p[0]})
+		case 2:
+			chars = append(chars, xproto.Char2b{Byte1: p[0], Byte2: p[1]})
+			fmt.Println(p[0], p[1])
+		default:
+			continue // skip all other characters
+		}
+	}
+
+	return chars
 }
