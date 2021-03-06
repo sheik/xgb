@@ -193,7 +193,11 @@ func main() {
 			// There's also a fill variant for all drawing commands:
 			xproto.PolyFillRectangle(X, draw, red, rectangles2)
 
-			// Draw the text:
+			// Draw the text. Xorg currently knows two ways of specifying text:
+			//  a) the (extended) ASCII encoding using ImageText8(..., []byte)
+			//  b) UTF16 encoding using ImageText16(..., []Char2b) -- Char2b is simply two  bytes
+			// at the bottom of this file, there are two utility functions that help
+			// convert a go string into an array of Char2b's.
 			xproto.ImageText16(X, byte(len(text)), draw, textCtx, 10, 160, text)
 
 		case xproto.DestroyNotifyEvent:
@@ -207,6 +211,11 @@ func main() {
 	}
 }
 
+// Char2b is defined as
+// 	Byte1 byte
+// 	Byte2 byte
+// and is used as a utf16 character.
+// This function takes a string and converts each rune into a char2b.
 func convertStringToChar2b(s string) []xproto.Char2b {
 	var chars []xproto.Char2b
 	var p []uint16
@@ -216,13 +225,18 @@ func convertStringToChar2b(s string) []xproto.Char2b {
 		if len(p) == 1 {
 			chars = append(chars, convertUint16ToChar2b(p[0]))
 		} else {
-			chars = append(chars, xproto.Char2b{Byte1: 0, Byte2: 32}) // add a blank instead
+			// If the utf16 representation is larger than 2 bytes
+			// we can not use it and insert a blank instead:
+			chars = append(chars, xproto.Char2b{Byte1: 0, Byte2: 32})
 		}
 	}
 
 	return chars
 }
 
+// convertUint16ToChar2b converts a uint16 (which is basically two bytes)
+// into a Char2b by using the higher 8 bits of u as Byte1
+// and the lower 8 bits of u as Byte2.
 func convertUint16ToChar2b(u uint16) xproto.Char2b {
 	return xproto.Char2b{
 		Byte1: byte((u & 0xff00) >> 8),
