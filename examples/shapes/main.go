@@ -29,8 +29,8 @@ func main() {
 	xproto.CreateWindow(X, screen.RootDepth, wid, screen.Root,
 		0, 0, 180, 160, 8, // X, Y, width, height, *border width*
 		xproto.WindowClassInputOutput, screen.RootVisual,
-		xproto.CwBackPixel | xproto.CwEventMask,
-		[]uint32{ screen.WhitePixel, xproto.EventMaskStructureNotify | xproto.EventMaskExposure })
+		xproto.CwBackPixel|xproto.CwEventMask,
+		[]uint32{screen.WhitePixel, xproto.EventMaskStructureNotify | xproto.EventMaskExposure})
 
 	// Map the window on the screen
 	xproto.MapWindow(X, wid)
@@ -54,7 +54,7 @@ func main() {
 	// which only has the foreground (color) value set to black:
 	foreground, _ := xproto.NewGcontextId(X)
 	mask := uint32(xproto.GcForeground)
-	values := []uint32{ screen.BlackPixel }
+	values := []uint32{screen.BlackPixel}
 	xproto.CreateGC(X, foreground, draw, mask, values)
 
 	// It is possible to set the foreground value to something different.
@@ -64,13 +64,13 @@ func main() {
 	// https://x.org/releases/X11R7.5/doc/libxcb/tutorial/#usecolor
 	red, _ := xproto.NewGcontextId(X)
 	mask = uint32(xproto.GcForeground)
-	values = []uint32{ 0xff0000 }
+	values = []uint32{0xff0000}
 	xproto.CreateGC(X, red, draw, mask, values)
 
 	// We'll create another graphics context that draws thick lines:
 	thick, _ := xproto.NewGcontextId(X)
 	mask = uint32(xproto.GcLineWidth)
-	values = []uint32{ 10 }
+	values = []uint32{10}
 	xproto.CreateGC(X, thick, draw, mask, values)
 
 	// It is even possible to set multiple properties at once.
@@ -80,7 +80,7 @@ func main() {
 	// LineWidth comes second.
 	blue, _ := xproto.NewGcontextId(X)
 	mask = uint32(xproto.GcForeground | xproto.GcLineWidth)
-	values = []uint32{ 0x0000ff, 4 }
+	values = []uint32{0x0000ff, 4}
 	xproto.CreateGC(X, blue, draw, mask, values)
 
 	// Properties of an already created gc can also be changed
@@ -89,7 +89,7 @@ func main() {
 	// and cap (line corner) style of our foreground context,
 	// to smooth out the polyline:
 	mask = uint32(xproto.GcLineWidth | xproto.GcCapStyle)
-	values = []uint32{ 3, xproto.CapStyleRound }
+	values = []uint32{3, xproto.CapStyleRound}
 	xproto.ChangeGC(X, foreground, mask, values)
 
 	points := []xproto.Point{
@@ -104,9 +104,9 @@ func main() {
 	// while every other point is placed relative to the one before it.
 	polyline := []xproto.Point{
 		{X: 50, Y: 10},
-		{X: 5, Y: 20}, // move 5 to the right, 20 down
+		{X: 5, Y: 20},   // move 5 to the right, 20 down
 		{X: 25, Y: -20}, // move 25 to the right, 20 up - notice how this point is level again with the first point
-		{X: 10, Y: 10}, // move 10 to the right, 10 down
+		{X: 10, Y: 10},  // move 10 to the right, 10 down
 	}
 
 	segments := []xproto.Segment{
@@ -151,8 +151,9 @@ func main() {
 			// which means that every point is placed relatively to the previous.
 			// If we were to use `xproto.CoordModeOrigin` instead,
 			// we could specify each point absolutely on the screen.
-			// It is also possible to `xproto.CoordModePrevious` for drawing points
-			// which 
+			// It is also possible to use `xproto.CoordModePrevious` for drawing *points*
+			// which means that each point would be specified relative to the previous one,
+			// just as we did with the polyline.
 			xproto.PolyLine(X, xproto.CoordModePrevious, draw, foreground, polyline)
 
 			// Draw two lines in red.
