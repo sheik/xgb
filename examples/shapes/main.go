@@ -200,8 +200,9 @@ func main() {
 
 			// Draw the text. Xorg currently knows two ways of specifying text:
 			//  a) the (extended) ASCII encoding using ImageText8(..., []byte)
-			//  b) UTF16 encoding using ImageText16(..., []Char2b) -- Char2b is simply two  bytes
-			// at the bottom of this file, there are two utility functions that help
+			//  b) UTF16 encoding using ImageText16(..., []Char2b) -- Char2b is
+			//     a structure consisting of two bytes.
+			// At the bottom of this example, there are two utility functions that help
 			// convert a go string into an array of Char2b's.
 			xproto.ImageText16(X, byte(len(text)), draw, textCtx, 10, 160, text)
 
