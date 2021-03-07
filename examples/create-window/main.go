@@ -113,7 +113,7 @@ func main() {
 		// and reacts to it accordingly. All events are defined in the xproto subpackage.
 		switch ev.(type) {
 		case xproto.KeyPressEvent:
-			// See https://pkg.go.dev/github.com/jezek/xgb@v0.0.0-20210121230032-cec22bda1ce1/xproto#KeyPressEvent
+			// See https://pkg.go.dev/github.com/jezek/xgb/xproto#KeyPressEvent
 			// for documentation about a key press event.
 			kpe := ev.(xproto.KeyPressEvent)
 			fmt.Printf("Key pressed: %d", kpe.Detail)
@@ -129,7 +129,7 @@ func main() {
 			// desktop environment).
 			//
 			// If that's the case for your environment, closing this example's window
-			// will also call the underlying Go program (because closing the X
+			// will also close the underlying Go program (because closing the X
 			// connection gives a nil event and EOF error).
 			//
 			// Consider how a single application might have multiple windows
@@ -137,7 +137,11 @@ func main() {
 			//
 			// With other DEs, the X connection will still stay open even after the
 			// X window is closed. For these DEs (e.g. i3) we have to check whether
-			// the WM sent us a DestroyNotifyEvent and close our program:
+			// the WM sent us a DestroyNotifyEvent and close our program.
+			//
+			// For more information about closing windows while maintaining
+			// the X connection see
+			// https://github.com/jezek/xgbutil/blob/master/_examples/graceful-window-close/main.go
 			return
 		}
 	}
