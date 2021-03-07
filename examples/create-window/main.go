@@ -17,6 +17,7 @@ func main() {
 		fmt.Println(err)
 		return
 	}
+	defer X.Close()
 
 	// xproto.Setup retrieves the Setup information from the setup bytes
 	// gathered during connection.
@@ -49,7 +50,8 @@ func main() {
 			0xffffffff,
 			xproto.EventMaskStructureNotify |
 				xproto.EventMaskKeyPress |
-				xproto.EventMaskKeyRelease})
+				xproto.EventMaskKeyRelease,
+		})
 
 	// MapWindow makes the window we've created appear on the screen.
 	// We demonstrated the use of a 'checked' request here.
@@ -102,6 +104,45 @@ func main() {
 		}
 		if xerr != nil {
 			fmt.Printf("Error: %s\n", xerr)
+		}
+
+		// This is how accepting events work:
+		// The application checks what event we got and reacts to it
+		// accordingly. All events are defined in the xproto subpackage.
+		// To receive events, we have to first register it using
+		// either xproto.CreateWindow or xproto.ChangeWindowAttributes.
+		switch ev.(type) {
+		case xproto.KeyPressEvent:
+			// See https://pkg.go.dev/github.com/jezek/xgb/xproto#KeyPressEvent
+			// for documentation about a key press event.
+			kpe := ev.(xproto.KeyPressEvent)
+			fmt.Printf("Key pressed: %d\n", kpe.Detail)
+			// The Detail value depends on the keyboard layout,
+			// for QWERTY, q is #24.
+			if kpe.Detail == 24 {
+				return // exit on q
+			}
+		case xproto.DestroyNotifyEvent:
+			// Depending on the user's desktop environment (especially
+			// window manager), killing a window might close the
+			// client's X connection (e. g. the default Ubuntu
+			// desktop environment).
+			//
+			// If that's the case for your environment, closing this example's window
+			// will also close the underlying Go program (because closing the X
+			// connection gives a nil event and EOF error).
+			//
+			// Consider how a single application might have multiple windows
+			// (e.g. an open popup or dialog, ...)
+			//
+			// With other DEs, the X connection will still stay open even after the
+			// X window is closed. For these DEs (e.g. i3) we have to check whether
+			// the WM sent us a DestroyNotifyEvent and close our program.
+			//
+			// For more information about closing windows while maintaining
+			// the X connection see
+			// https://github.com/jezek/xgbutil/blob/master/_examples/graceful-window-close/main.go
+			return
 		}
 	}
 }
