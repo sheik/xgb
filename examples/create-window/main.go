@@ -107,10 +107,10 @@ func main() {
 		}
 
 		// This is how accepting events work:
-		// The application checks what event we got
-		// (the event must be registered using either xproto.CreateWindow (see l.35) or
-		//  xproto.ChangeWindowAttributes (see l.50)).
-		// and reacts to it accordingly. All events are defined in the xproto subpackage.
+		// The application checks what event we got and reacts to it
+		// accordingly. All events are defined in the xproto subpackage.
+		// To receive events, we have to first register it using
+		// either xproto.CreateWindow or xproto.ChangeWindowAttributes.
 		switch ev.(type) {
 		case xproto.KeyPressEvent:
 			// See https://pkg.go.dev/github.com/jezek/xgb/xproto#KeyPressEvent
