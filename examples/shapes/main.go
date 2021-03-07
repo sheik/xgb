@@ -3,6 +3,8 @@
 // https://x.org/releases/X11R7.5/doc/libxcb/tutorial/#drawingprim
 // Four points, a single polyline, two line segments,
 // two rectangle and two arcs are drawn.
+// In addition to this, we will also write some text
+// and fill a rectangle.
 package main
 
 import (
