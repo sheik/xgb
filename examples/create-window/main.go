@@ -116,7 +116,7 @@ func main() {
 			// See https://pkg.go.dev/github.com/jezek/xgb/xproto#KeyPressEvent
 			// for documentation about a key press event.
 			kpe := ev.(xproto.KeyPressEvent)
-			fmt.Printf("Key pressed: %d", kpe.Detail)
+			fmt.Printf("Key pressed: %d\n", kpe.Detail)
 			// The Detail value depends on the keyboard layout,
 			// for QWERTY, q is #24.
 			if kpe.Detail == 24 {
