@@ -18,14 +18,19 @@ import (
 func main() {
 	X, err := xgb.NewConn()
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("error connecting to X:", err)
 		return
 	}
 	defer X.Close()
 
 	setup := xproto.Setup(X)
 	screen := setup.DefaultScreen(X)
-	wid, _ := xproto.NewWindowId(X)
+	wid, err := xproto.NewWindowId(X)
+	if err != nil {
+		fmt.Println("error creating window id:", err)
+		return
+	}
+
 	draw := xproto.Drawable(wid) // for now, we simply draw into the window
 
 	// Create the window
@@ -54,7 +59,12 @@ func main() {
 	//
 	// Here we create a new graphics context
 	// which only has the foreground (color) value set to black:
-	foreground, _ := xproto.NewGcontextId(X)
+	foreground, err := xproto.NewGcontextId(X)
+	if err != nil {
+		fmt.Println("error creating foreground context:", err)
+		return
+	}
+
 	mask := uint32(xproto.GcForeground)
 	values := []uint32{screen.BlackPixel}
 	xproto.CreateGC(X, foreground, draw, mask, values)
@@ -64,13 +74,23 @@ func main() {
 	// but for demonstration setting the color directly also works.
 	// For more information on color maps, see the xcb documentation:
 	// https://x.org/releases/X11R7.5/doc/libxcb/tutorial/#usecolor
-	red, _ := xproto.NewGcontextId(X)
+	red, err := xproto.NewGcontextId(X)
+	if err != nil {
+		fmt.Println("error creating red context:", err)
+		return
+	}
+
 	mask = uint32(xproto.GcForeground)
 	values = []uint32{0xff0000}
 	xproto.CreateGC(X, red, draw, mask, values)
 
 	// We'll create another graphics context that draws thick lines:
-	thick, _ := xproto.NewGcontextId(X)
+	thick, err := xproto.NewGcontextId(X)
+	if err != nil {
+		fmt.Println("error creating thick context:", err)
+		return
+	}
+
 	mask = uint32(xproto.GcLineWidth)
 	values = []uint32{10}
 	xproto.CreateGC(X, thick, draw, mask, values)
@@ -80,7 +100,12 @@ func main() {
 	// defined in `xproto`:
 	// Foreground is defined first, so we also set it's value first.
 	// LineWidth comes second.
-	blue, _ := xproto.NewGcontextId(X)
+	blue, err := xproto.NewGcontextId(X)
+	if err != nil {
+		fmt.Println("error creating blue context:", err)
+		return
+	}
+
 	mask = uint32(xproto.GcForeground | xproto.GcLineWidth)
 	values = []uint32{0x0000ff, 4}
 	xproto.CreateGC(X, blue, draw, mask, values)
@@ -97,16 +122,26 @@ func main() {
 	// Writing text needs a bit more setup -- we first have
 	// to open the required font.
 	// For all available fonts, install and run xfontsel.
-	font, _ := xproto.NewFontId(X)
+	font, err := xproto.NewFontId(X)
+	if err != nil {
+		fmt.Println("error creating font id:", err)
+		return
+	}
+
 	fontname := "-gnu-unifont-*-*-*-*-16-*-*-*-*-*-*-*"
 	err = xproto.OpenFontChecked(X, font, uint16(len(fontname)), fontname).Check()
 	if err != nil {
-		fmt.Println("Failed opening the font:", err)
+		fmt.Println("failed opening the font:", err)
 		return
 	}
 
 	// And create a context from it. We simply pass the font's ID to the GcFont property.
-	textCtx, _ := xproto.NewGcontextId(X)
+	textCtx, err := xproto.NewGcontextId(X)
+	if err != nil {
+		fmt.Println("error creating text context:", err)
+		return
+	}
+
 	mask = uint32(xproto.GcForeground | xproto.GcBackground | xproto.GcFont)
 	values = []uint32{screen.BlackPixel, screen.WhitePixel, uint32(font)}
 	xproto.CreateGC(X, textCtx, draw, mask, values)
@@ -163,6 +198,14 @@ func main() {
 
 	for {
 		evt, err := X.WaitForEvent()
+
+		if err != nil {
+			fmt.Println("error reading event:", err)
+			return
+		} else if evt == nil && err == nil {
+			return
+		}
+
 		switch evt.(type) {
 		case xproto.ExposeEvent:
 			// Draw the four points we specified earlier.
@@ -206,11 +249,6 @@ func main() {
 			xproto.ImageText16(X, byte(len(text)), draw, textCtx, 10, 160, text)
 
 		case xproto.DestroyNotifyEvent:
-			return
-		}
-
-		if err != nil {
-			fmt.Println(err)
 			return
 		}
 	}
