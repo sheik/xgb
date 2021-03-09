@@ -121,14 +121,28 @@ func main() {
 
 	// Writing text needs a bit more setup -- we first have
 	// to open the required font.
-	// For all available fonts, install and run xfontsel.
 	font, err := xproto.NewFontId(X)
 	if err != nil {
 		fmt.Println("error creating font id:", err)
 		return
 	}
 
-	fontname := "-gnu-unifont-*-*-*-*-16-*-*-*-*-*-*-*"
+	// The font identifier that has to be passed to X for opening the font
+	// sets all font properties:
+	// publisher-family-weight-slant-width-adstyl-pxlsz-ptSz-resx-resy-spc-avgWidth-registry-encoding
+	// For all available fonts, install and run xfontsel.
+	//
+	// To load any available font, set all fields to an asterisk.
+	// To specify a font, set one or multiple fields.
+	// This can also be seen in xfontsel -- initially every field is set to *,
+	// however, the more fields are set, the fewer fonts match.
+	//
+	// Using a specific font (e.g. Gnu Unifont) can be as easy as
+	// "-gnu-unifont-*-*-*-*-16-*-*-*-*-*-*-*"
+	//
+	// For this example we simply want to load any font of size 14 which is capable 
+	// of displaying Unicode characters:
+	fontname := "-*-*-*-*-*-*-14-*-*-*-*-*-iso10646-1"
 	err = xproto.OpenFontChecked(X, font, uint16(len(fontname)), fontname).Check()
 	if err != nil {
 		fmt.Println("failed opening the font:", err)
