@@ -1,8 +1,8 @@
 // The shapes example shows how to draw basic shapes into a window.
-// It can be considered the Go aequivalent of
+// It can be considered the Go equivalent of
 // https://x.org/releases/X11R7.5/doc/libxcb/tutorial/#drawingprim
 // Four points, a single polyline, two line segments,
-// two rectangle and two arcs are drawn.
+// two rectangles and two arcs are drawn.
 // In addition to this, we will also write some text
 // and fill a rectangle.
 package main
@@ -40,10 +40,9 @@ func main() {
 
 	// Up to here everything is the same as in the `create-window` example.
 	// We opened a connection, created and mapped the window.
+	// But this time we'll be drawing some basic shapes.
 	// Note how this time the border width is set to 8 instead of 0.
 	//
-	// But this time we'll be drawing some basic shapes:
-
 	// First of all we need to create a context to draw with.
 	// The graphics context combines all properties (e.g. color, line width, font, fill style, ...)
 	// that should be used to draw something. All available properties
@@ -126,7 +125,7 @@ func main() {
 		{X: 40, Y: 10},
 	}
 
-	// A polyline is essientially a line with multiple points.
+	// A polyline is essentially a line with multiple points.
 	// The first point is placed absolutely inside the window,
 	// while every other point is placed relative to the one before it.
 	polyline := []xproto.Point{
