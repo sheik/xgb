@@ -216,7 +216,7 @@ func main() {
 		if err != nil {
 			fmt.Println("error reading event:", err)
 			return
-		} else if evt == nil && err == nil {
+		} else if evt == nil {
 			return
 		}
 
