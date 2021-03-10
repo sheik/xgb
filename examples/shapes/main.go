@@ -140,9 +140,13 @@ func main() {
 	// Using a specific font (e.g. Gnu Unifont) can be as easy as
 	// "-gnu-unifont-*-*-*-*-16-*-*-*-*-*-*-*"
 	//
-	// For this example we simply want to load any font of size 14 which is capable 
-	// of displaying Unicode characters:
-	fontname := "-*-*-*-*-*-*-14-*-*-*-*-*-iso10646-1"
+	// To load any font that is encoded for usage
+	// with Unicode characters, one would use
+	// fontname := "-*-*-*-*-*-*-14-*-*-*-*-*-iso10646-1"
+	//
+	// For now, we'll simply stick with the fixed font which is available
+	// to every X session:
+	fontname := "-*-fixed-*-*-*-*-14-*-*-*-*-*-*-*"
 	err = xproto.OpenFontChecked(X, font, uint16(len(fontname)), fontname).Check()
 	if err != nil {
 		fmt.Println("failed opening the font:", err)
