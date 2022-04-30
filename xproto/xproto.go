@@ -526,7 +526,9 @@ func ButtonReleaseEventNew(buf []byte) xgb.Event {
 
 // Bytes writes a ButtonReleaseEvent value to a byte slice.
 func (v ButtonReleaseEvent) Bytes() []byte {
-	return ButtonPressEvent(v).Bytes()
+	buf := ButtonPressEvent(v).Bytes()
+	buf[0] = 5
+	return buf
 }
 
 // SequenceId returns the sequence id attached to the ButtonRelease event.
@@ -806,7 +808,9 @@ func CirculateRequestEventNew(buf []byte) xgb.Event {
 
 // Bytes writes a CirculateRequestEvent value to a byte slice.
 func (v CirculateRequestEvent) Bytes() []byte {
-	return CirculateNotifyEvent(v).Bytes()
+	buf := CirculateNotifyEvent(v).Bytes()
+	buf[0] = 27
+	return buf
 }
 
 // SequenceId returns the sequence id attached to the CirculateRequest event.
@@ -2441,7 +2445,9 @@ func FocusOutEventNew(buf []byte) xgb.Event {
 
 // Bytes writes a FocusOutEvent value to a byte slice.
 func (v FocusOutEvent) Bytes() []byte {
-	return FocusInEvent(v).Bytes()
+	buf := FocusInEvent(v).Bytes()
+	buf[0] = 10
+	return buf
 }
 
 // SequenceId returns the sequence id attached to the FocusOut event.
@@ -3412,7 +3418,9 @@ func KeyReleaseEventNew(buf []byte) xgb.Event {
 
 // Bytes writes a KeyReleaseEvent value to a byte slice.
 func (v KeyReleaseEvent) Bytes() []byte {
-	return KeyPressEvent(v).Bytes()
+	buf := KeyPressEvent(v).Bytes()
+	buf[0] = 3
+	return buf
 }
 
 // SequenceId returns the sequence id attached to the KeyRelease event.
@@ -3514,7 +3522,9 @@ func LeaveNotifyEventNew(buf []byte) xgb.Event {
 
 // Bytes writes a LeaveNotifyEvent value to a byte slice.
 func (v LeaveNotifyEvent) Bytes() []byte {
-	return EnterNotifyEvent(v).Bytes()
+	buf := EnterNotifyEvent(v).Bytes()
+	buf[0] = 8
+	return buf
 }
 
 // SequenceId returns the sequence id attached to the LeaveNotify event.
