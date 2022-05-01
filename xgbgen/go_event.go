@@ -162,7 +162,9 @@ func (e *EventCopy) Read(c *Context) {
 func (e *EventCopy) Write(c *Context) {
 	c.Putln("// Bytes writes a %s value to a byte slice.", e.EvType())
 	c.Putln("func (v %s) Bytes() []byte {", e.EvType())
-	c.Putln("return %s(v).Bytes()", e.Old.(*Event).EvType())
+	c.Putln("buf := %s(v).Bytes()", e.Old.(*Event).EvType())
+	c.Putln("buf[0] = %d", e.Number)
+	c.Putln("return buf")
 	c.Putln("}")
 	c.Putln("")
 }
