@@ -101,6 +101,11 @@ const (
 	BarrierDirectionsNegativeY = 8
 )
 
+const (
+	ClientDisconnectFlagsDefault   = 0
+	ClientDisconnectFlagsTerminate = 1
+)
+
 // CursorNotify is the event number for a CursorNotifyEvent.
 const CursorNotify = 1
 
@@ -1353,6 +1358,100 @@ func fetchRegionRequest(c *xgb.Conn, Region Region) []byte {
 	return buf
 }
 
+// GetClientDisconnectModeCookie is a cookie used only for GetClientDisconnectMode requests.
+type GetClientDisconnectModeCookie struct {
+	*xgb.Cookie
+}
+
+// GetClientDisconnectMode sends a checked request.
+// If an error occurs, it will be returned with the reply by calling GetClientDisconnectModeCookie.Reply()
+func GetClientDisconnectMode(c *xgb.Conn) GetClientDisconnectModeCookie {
+	c.ExtLock.RLock()
+	defer c.ExtLock.RUnlock()
+	if _, ok := c.Extensions["XFIXES"]; !ok {
+		panic("Cannot issue request 'GetClientDisconnectMode' using the uninitialized extension 'XFIXES'. xfixes.Init(connObj) must be called first.")
+	}
+	cookie := c.NewCookie(true, true)
+	c.NewRequest(getClientDisconnectModeRequest(c), cookie)
+	return GetClientDisconnectModeCookie{cookie}
+}
+
+// GetClientDisconnectModeUnchecked sends an unchecked request.
+// If an error occurs, it can only be retrieved using xgb.WaitForEvent or xgb.PollForEvent.
+func GetClientDisconnectModeUnchecked(c *xgb.Conn) GetClientDisconnectModeCookie {
+	c.ExtLock.RLock()
+	defer c.ExtLock.RUnlock()
+	if _, ok := c.Extensions["XFIXES"]; !ok {
+		panic("Cannot issue request 'GetClientDisconnectMode' using the uninitialized extension 'XFIXES'. xfixes.Init(connObj) must be called first.")
+	}
+	cookie := c.NewCookie(false, true)
+	c.NewRequest(getClientDisconnectModeRequest(c), cookie)
+	return GetClientDisconnectModeCookie{cookie}
+}
+
+// GetClientDisconnectModeReply represents the data returned from a GetClientDisconnectMode request.
+type GetClientDisconnectModeReply struct {
+	Sequence uint16 // sequence number of the request for this reply
+	Length   uint32 // number of bytes in this reply
+	// padding: 1 bytes
+	DisconnectMode uint32
+	// padding: 20 bytes
+}
+
+// Reply blocks and returns the reply data for a GetClientDisconnectMode request.
+func (cook GetClientDisconnectModeCookie) Reply() (*GetClientDisconnectModeReply, error) {
+	buf, err := cook.Cookie.Reply()
+	if err != nil {
+		return nil, err
+	}
+	if buf == nil {
+		return nil, nil
+	}
+	return getClientDisconnectModeReply(buf), nil
+}
+
+// getClientDisconnectModeReply reads a byte slice into a GetClientDisconnectModeReply value.
+func getClientDisconnectModeReply(buf []byte) *GetClientDisconnectModeReply {
+	v := new(GetClientDisconnectModeReply)
+	b := 1 // skip reply determinant
+
+	b += 1 // padding
+
+	v.Sequence = xgb.Get16(buf[b:])
+	b += 2
+
+	v.Length = xgb.Get32(buf[b:]) // 4-byte units
+	b += 4
+
+	v.DisconnectMode = xgb.Get32(buf[b:])
+	b += 4
+
+	b += 20 // padding
+
+	return v
+}
+
+// Write request to wire for GetClientDisconnectMode
+// getClientDisconnectModeRequest writes a GetClientDisconnectMode request to a byte slice.
+func getClientDisconnectModeRequest(c *xgb.Conn) []byte {
+	size := 4
+	b := 0
+	buf := make([]byte, size)
+
+	c.ExtLock.RLock()
+	buf[b] = c.Extensions["XFIXES"]
+	c.ExtLock.RUnlock()
+	b += 1
+
+	buf[b] = 34 // request opcode
+	b += 1
+
+	xgb.Put16(buf[b:], uint16(size/4)) // write request size in 4-byte units
+	b += 2
+
+	return buf
+}
+
 // GetCursorImageCookie is a cookie used only for GetCursorImage requests.
 type GetCursorImageCookie struct {
 	*xgb.Cookie
@@ -1524,9 +1623,8 @@ type GetCursorImageAndNameReply struct {
 	CursorAtom   xproto.Atom
 	Nbytes       uint16
 	// padding: 2 bytes
-	Name string // size: xgb.Pad((int(Nbytes) * 1))
-	// alignment gap to multiple of 4
 	CursorImage []uint32 // size: xgb.Pad(((int(Width) * int(Height)) * 4))
+	Name        string   // size: xgb.Pad((int(Nbytes) * 1))
 }
 
 // Reply blocks and returns the reply data for a GetCursorImageAndName request.
@@ -1583,19 +1681,17 @@ func getCursorImageAndNameReply(buf []byte) *GetCursorImageAndNameReply {
 
 	b += 2 // padding
 
+	v.CursorImage = make([]uint32, (int(v.Width) * int(v.Height)))
+	for i := 0; i < int((int(v.Width) * int(v.Height))); i++ {
+		v.CursorImage[i] = xgb.Get32(buf[b:])
+		b += 4
+	}
+
 	{
 		byteString := make([]byte, v.Nbytes)
 		copy(byteString[:v.Nbytes], buf[b:])
 		v.Name = string(byteString)
 		b += int(v.Nbytes)
-	}
-
-	b = (b + 3) & ^3 // alignment gap
-
-	v.CursorImage = make([]uint32, (int(v.Width) * int(v.Height)))
-	for i := 0; i < int((int(v.Width) * int(v.Height))); i++ {
-		v.CursorImage[i] = xgb.Get32(buf[b:])
-		b += 4
 	}
 
 	return v
@@ -2223,6 +2319,67 @@ func selectSelectionInputRequest(c *xgb.Conn, Window xproto.Window, Selection xp
 	b += 4
 
 	xgb.Put32(buf[b:], EventMask)
+	b += 4
+
+	return buf
+}
+
+// SetClientDisconnectModeCookie is a cookie used only for SetClientDisconnectMode requests.
+type SetClientDisconnectModeCookie struct {
+	*xgb.Cookie
+}
+
+// SetClientDisconnectMode sends an unchecked request.
+// If an error occurs, it can only be retrieved using xgb.WaitForEvent or xgb.PollForEvent.
+func SetClientDisconnectMode(c *xgb.Conn, DisconnectMode uint32) SetClientDisconnectModeCookie {
+	c.ExtLock.RLock()
+	defer c.ExtLock.RUnlock()
+	if _, ok := c.Extensions["XFIXES"]; !ok {
+		panic("Cannot issue request 'SetClientDisconnectMode' using the uninitialized extension 'XFIXES'. xfixes.Init(connObj) must be called first.")
+	}
+	cookie := c.NewCookie(false, false)
+	c.NewRequest(setClientDisconnectModeRequest(c, DisconnectMode), cookie)
+	return SetClientDisconnectModeCookie{cookie}
+}
+
+// SetClientDisconnectModeChecked sends a checked request.
+// If an error occurs, it can be retrieved using SetClientDisconnectModeCookie.Check()
+func SetClientDisconnectModeChecked(c *xgb.Conn, DisconnectMode uint32) SetClientDisconnectModeCookie {
+	c.ExtLock.RLock()
+	defer c.ExtLock.RUnlock()
+	if _, ok := c.Extensions["XFIXES"]; !ok {
+		panic("Cannot issue request 'SetClientDisconnectMode' using the uninitialized extension 'XFIXES'. xfixes.Init(connObj) must be called first.")
+	}
+	cookie := c.NewCookie(true, false)
+	c.NewRequest(setClientDisconnectModeRequest(c, DisconnectMode), cookie)
+	return SetClientDisconnectModeCookie{cookie}
+}
+
+// Check returns an error if one occurred for checked requests that are not expecting a reply.
+// This cannot be called for requests expecting a reply, nor for unchecked requests.
+func (cook SetClientDisconnectModeCookie) Check() error {
+	return cook.Cookie.Check()
+}
+
+// Write request to wire for SetClientDisconnectMode
+// setClientDisconnectModeRequest writes a SetClientDisconnectMode request to a byte slice.
+func setClientDisconnectModeRequest(c *xgb.Conn, DisconnectMode uint32) []byte {
+	size := 8
+	b := 0
+	buf := make([]byte, size)
+
+	c.ExtLock.RLock()
+	buf[b] = c.Extensions["XFIXES"]
+	c.ExtLock.RUnlock()
+	b += 1
+
+	buf[b] = 33 // request opcode
+	b += 1
+
+	xgb.Put16(buf[b:], uint16(size/4)) // write request size in 4-byte units
+	b += 2
+
+	xgb.Put32(buf[b:], DisconnectMode)
 	b += 4
 
 	return buf

@@ -152,7 +152,7 @@ func ClientIdSpecListBytes(buf []byte, list []ClientIdSpec) int {
 type ClientIdValue struct {
 	Spec   ClientIdSpec
 	Length uint32
-	Value  []uint32 // size: xgb.Pad((int(Length) * 4))
+	Value  []uint32 // size: xgb.Pad(((int(Length) / 4) * 4))
 }
 
 // ClientIdValueRead reads a byte slice into a ClientIdValue value.
@@ -165,8 +165,8 @@ func ClientIdValueRead(buf []byte, v *ClientIdValue) int {
 	v.Length = xgb.Get32(buf[b:])
 	b += 4
 
-	v.Value = make([]uint32, v.Length)
-	for i := 0; i < int(v.Length); i++ {
+	v.Value = make([]uint32, (int(v.Length) / 4))
+	for i := 0; i < int((int(v.Length) / 4)); i++ {
 		v.Value[i] = xgb.Get32(buf[b:])
 		b += 4
 	}
@@ -186,7 +186,7 @@ func ClientIdValueReadList(buf []byte, dest []ClientIdValue) int {
 
 // Bytes writes a ClientIdValue value to a byte slice.
 func (v ClientIdValue) Bytes() []byte {
-	buf := make([]byte, (12 + xgb.Pad((int(v.Length) * 4))))
+	buf := make([]byte, (12 + xgb.Pad(((int(v.Length) / 4) * 4))))
 	b := 0
 
 	{
@@ -198,7 +198,7 @@ func (v ClientIdValue) Bytes() []byte {
 	xgb.Put32(buf[b:], v.Length)
 	b += 4
 
-	for i := 0; i < int(v.Length); i++ {
+	for i := 0; i < int((int(v.Length) / 4)); i++ {
 		xgb.Put32(buf[b:], v.Value[i])
 		b += 4
 	}
@@ -222,7 +222,7 @@ func ClientIdValueListBytes(buf []byte, list []ClientIdValue) int {
 func ClientIdValueListSize(list []ClientIdValue) int {
 	size := 0
 	for _, item := range list {
-		size += (12 + xgb.Pad((int(item.Length) * 4)))
+		size += (12 + xgb.Pad(((int(item.Length) / 4) * 4)))
 	}
 	return size
 }
