@@ -345,6 +345,89 @@ func CrtcChangeListBytes(buf []byte, list []CrtcChange) int {
 	return xgb.Pad(b)
 }
 
+type Lease uint32
+
+func NewLeaseId(c *xgb.Conn) (Lease, error) {
+	id, err := c.NewId()
+	if err != nil {
+		return 0, err
+	}
+	return Lease(id), nil
+}
+
+type LeaseNotify struct {
+	Timestamp xproto.Timestamp
+	Window    xproto.Window
+	Lease     Lease
+	Created   byte
+	// padding: 15 bytes
+}
+
+// LeaseNotifyRead reads a byte slice into a LeaseNotify value.
+func LeaseNotifyRead(buf []byte, v *LeaseNotify) int {
+	b := 0
+
+	v.Timestamp = xproto.Timestamp(xgb.Get32(buf[b:]))
+	b += 4
+
+	v.Window = xproto.Window(xgb.Get32(buf[b:]))
+	b += 4
+
+	v.Lease = Lease(xgb.Get32(buf[b:]))
+	b += 4
+
+	v.Created = buf[b]
+	b += 1
+
+	b += 15 // padding
+
+	return b
+}
+
+// LeaseNotifyReadList reads a byte slice into a list of LeaseNotify values.
+func LeaseNotifyReadList(buf []byte, dest []LeaseNotify) int {
+	b := 0
+	for i := 0; i < len(dest); i++ {
+		dest[i] = LeaseNotify{}
+		b += LeaseNotifyRead(buf[b:], &dest[i])
+	}
+	return xgb.Pad(b)
+}
+
+// Bytes writes a LeaseNotify value to a byte slice.
+func (v LeaseNotify) Bytes() []byte {
+	buf := make([]byte, 28)
+	b := 0
+
+	xgb.Put32(buf[b:], uint32(v.Timestamp))
+	b += 4
+
+	xgb.Put32(buf[b:], uint32(v.Window))
+	b += 4
+
+	xgb.Put32(buf[b:], uint32(v.Lease))
+	b += 4
+
+	buf[b] = v.Created
+	b += 1
+
+	b += 15 // padding
+
+	return buf[:b]
+}
+
+// LeaseNotifyListBytes writes a list of LeaseNotify values to a byte slice.
+func LeaseNotifyListBytes(buf []byte, list []LeaseNotify) int {
+	b := 0
+	var structBytes []byte
+	for _, item := range list {
+		structBytes = item.Bytes()
+		copy(buf[b:], structBytes)
+		b += len(structBytes)
+	}
+	return xgb.Pad(b)
+}
+
 type Mode uint32
 
 func NewModeId(c *xgb.Conn) (Mode, error) {
@@ -503,6 +586,153 @@ func ModeInfoListBytes(buf []byte, list []ModeInfo) int {
 	return xgb.Pad(b)
 }
 
+type MonitorInfo struct {
+	Name                xproto.Atom
+	Primary             bool
+	Automatic           bool
+	NOutput             uint16
+	X                   int16
+	Y                   int16
+	Width               uint16
+	Height              uint16
+	WidthInMillimeters  uint32
+	HeightInMillimeters uint32
+	Outputs             []Output // size: xgb.Pad((int(NOutput) * 4))
+}
+
+// MonitorInfoRead reads a byte slice into a MonitorInfo value.
+func MonitorInfoRead(buf []byte, v *MonitorInfo) int {
+	b := 0
+
+	v.Name = xproto.Atom(xgb.Get32(buf[b:]))
+	b += 4
+
+	if buf[b] == 1 {
+		v.Primary = true
+	} else {
+		v.Primary = false
+	}
+	b += 1
+
+	if buf[b] == 1 {
+		v.Automatic = true
+	} else {
+		v.Automatic = false
+	}
+	b += 1
+
+	v.NOutput = xgb.Get16(buf[b:])
+	b += 2
+
+	v.X = int16(xgb.Get16(buf[b:]))
+	b += 2
+
+	v.Y = int16(xgb.Get16(buf[b:]))
+	b += 2
+
+	v.Width = xgb.Get16(buf[b:])
+	b += 2
+
+	v.Height = xgb.Get16(buf[b:])
+	b += 2
+
+	v.WidthInMillimeters = xgb.Get32(buf[b:])
+	b += 4
+
+	v.HeightInMillimeters = xgb.Get32(buf[b:])
+	b += 4
+
+	v.Outputs = make([]Output, v.NOutput)
+	for i := 0; i < int(v.NOutput); i++ {
+		v.Outputs[i] = Output(xgb.Get32(buf[b:]))
+		b += 4
+	}
+
+	return b
+}
+
+// MonitorInfoReadList reads a byte slice into a list of MonitorInfo values.
+func MonitorInfoReadList(buf []byte, dest []MonitorInfo) int {
+	b := 0
+	for i := 0; i < len(dest); i++ {
+		dest[i] = MonitorInfo{}
+		b += MonitorInfoRead(buf[b:], &dest[i])
+	}
+	return xgb.Pad(b)
+}
+
+// Bytes writes a MonitorInfo value to a byte slice.
+func (v MonitorInfo) Bytes() []byte {
+	buf := make([]byte, (24 + xgb.Pad((int(v.NOutput) * 4))))
+	b := 0
+
+	xgb.Put32(buf[b:], uint32(v.Name))
+	b += 4
+
+	if v.Primary {
+		buf[b] = 1
+	} else {
+		buf[b] = 0
+	}
+	b += 1
+
+	if v.Automatic {
+		buf[b] = 1
+	} else {
+		buf[b] = 0
+	}
+	b += 1
+
+	xgb.Put16(buf[b:], v.NOutput)
+	b += 2
+
+	xgb.Put16(buf[b:], uint16(v.X))
+	b += 2
+
+	xgb.Put16(buf[b:], uint16(v.Y))
+	b += 2
+
+	xgb.Put16(buf[b:], v.Width)
+	b += 2
+
+	xgb.Put16(buf[b:], v.Height)
+	b += 2
+
+	xgb.Put32(buf[b:], v.WidthInMillimeters)
+	b += 4
+
+	xgb.Put32(buf[b:], v.HeightInMillimeters)
+	b += 4
+
+	for i := 0; i < int(v.NOutput); i++ {
+		xgb.Put32(buf[b:], uint32(v.Outputs[i]))
+		b += 4
+	}
+
+	return buf[:b]
+}
+
+// MonitorInfoListBytes writes a list of MonitorInfo values to a byte slice.
+func MonitorInfoListBytes(buf []byte, list []MonitorInfo) int {
+	b := 0
+	var structBytes []byte
+	for _, item := range list {
+		structBytes = item.Bytes()
+		copy(buf[b:], structBytes)
+		b += len(structBytes)
+	}
+	return xgb.Pad(b)
+}
+
+// MonitorInfoListSize computes the size (bytes) of a list of MonitorInfo values.
+func MonitorInfoListSize(list []MonitorInfo) int {
+	size := 0
+	for _, item := range list {
+		size += (24 + xgb.Pad((int(item.NOutput) * 4)))
+	}
+	return size
+}
+
 const (
 	NotifyCrtcChange       = 0
 	NotifyOutputChange     = 1
@@ -510,6 +740,7 @@ const (
 	NotifyProviderChange   = 3
 	NotifyProviderProperty = 4
 	NotifyResourceChange   = 5
+	NotifyLease            = 6
 )
 
 // Notify is the event number for a NotifyEvent.
@@ -584,12 +815,14 @@ func init() {
 // Note that to *create* a Union, you should *never* create
 // this struct directly (unless you know what you're doing).
 // Instead use one of the following constructors for 'NotifyDataUnion':
-//     NotifyDataUnionCcNew(Cc CrtcChange) NotifyDataUnion
-//     NotifyDataUnionOcNew(Oc OutputChange) NotifyDataUnion
-//     NotifyDataUnionOpNew(Op OutputProperty) NotifyDataUnion
-//     NotifyDataUnionPcNew(Pc ProviderChange) NotifyDataUnion
-//     NotifyDataUnionPpNew(Pp ProviderProperty) NotifyDataUnion
-//     NotifyDataUnionRcNew(Rc ResourceChange) NotifyDataUnion
+//
+//	NotifyDataUnionCcNew(Cc CrtcChange) NotifyDataUnion
+//	NotifyDataUnionOcNew(Oc OutputChange) NotifyDataUnion
+//	NotifyDataUnionOpNew(Op OutputProperty) NotifyDataUnion
+//	NotifyDataUnionPcNew(Pc ProviderChange) NotifyDataUnion
+//	NotifyDataUnionPpNew(Pp ProviderProperty) NotifyDataUnion
+//	NotifyDataUnionRcNew(Rc ResourceChange) NotifyDataUnion
+//	NotifyDataUnionLcNew(Lc LeaseNotify) NotifyDataUnion
 type NotifyDataUnion struct {
 	Cc CrtcChange
 	Oc OutputChange
@@ -597,6 +830,7 @@ type NotifyDataUnion struct {
 	Pc ProviderChange
 	Pp ProviderProperty
 	Rc ResourceChange
+	Lc LeaseNotify
 }
 
 // NotifyDataUnionCcNew constructs a new NotifyDataUnion union type with the Cc field.
@@ -638,6 +872,10 @@ func NotifyDataUnionCcNew(Cc CrtcChange) NotifyDataUnion {
 	b = 0 // always read the same bytes
 	v.Rc = ResourceChange{}
 	b += ResourceChangeRead(buf[b:], &v.Rc)
+
+	b = 0 // always read the same bytes
+	v.Lc = LeaseNotify{}
+	b += LeaseNotifyRead(buf[b:], &v.Lc)
 
 	return v
 }
@@ -682,6 +920,10 @@ func NotifyDataUnionOcNew(Oc OutputChange) NotifyDataUnion {
 	v.Rc = ResourceChange{}
 	b += ResourceChangeRead(buf[b:], &v.Rc)
 
+	b = 0 // always read the same bytes
+	v.Lc = LeaseNotify{}
+	b += LeaseNotifyRead(buf[b:], &v.Lc)
+
 	return v
 }
 
@@ -724,6 +966,10 @@ func NotifyDataUnionOpNew(Op OutputProperty) NotifyDataUnion {
 	b = 0 // always read the same bytes
 	v.Rc = ResourceChange{}
 	b += ResourceChangeRead(buf[b:], &v.Rc)
+
+	b = 0 // always read the same bytes
+	v.Lc = LeaseNotify{}
+	b += LeaseNotifyRead(buf[b:], &v.Lc)
 
 	return v
 }
@@ -768,6 +1014,10 @@ func NotifyDataUnionPcNew(Pc ProviderChange) NotifyDataUnion {
 	v.Rc = ResourceChange{}
 	b += ResourceChangeRead(buf[b:], &v.Rc)
 
+	b = 0 // always read the same bytes
+	v.Lc = LeaseNotify{}
+	b += LeaseNotifyRead(buf[b:], &v.Lc)
+
 	return v
 }
 
@@ -810,6 +1060,10 @@ func NotifyDataUnionPpNew(Pp ProviderProperty) NotifyDataUnion {
 	b = 0 // always read the same bytes
 	v.Rc = ResourceChange{}
 	b += ResourceChangeRead(buf[b:], &v.Rc)
+
+	b = 0 // always read the same bytes
+	v.Lc = LeaseNotify{}
+	b += LeaseNotifyRead(buf[b:], &v.Lc)
 
 	return v
 }
@@ -854,6 +1108,57 @@ func NotifyDataUnionRcNew(Rc ResourceChange) NotifyDataUnion {
 	v.Rc = ResourceChange{}
 	b += ResourceChangeRead(buf[b:], &v.Rc)
 
+	b = 0 // always read the same bytes
+	v.Lc = LeaseNotify{}
+	b += LeaseNotifyRead(buf[b:], &v.Lc)
+
+	return v
+}
+
+// NotifyDataUnionLcNew constructs a new NotifyDataUnion union type with the Lc field.
+func NotifyDataUnionLcNew(Lc LeaseNotify) NotifyDataUnion {
+	var b int
+	buf := make([]byte, 28)
+
+	{
+		structBytes := Lc.Bytes()
+		copy(buf[b:], structBytes)
+		b += len(structBytes)
+	}
+
+	// Create the Union type
+	v := NotifyDataUnion{}
+
+	// Now copy buf into all fields
+
+	b = 0 // always read the same bytes
+	v.Cc = CrtcChange{}
+	b += CrtcChangeRead(buf[b:], &v.Cc)
+
+	b = 0 // always read the same bytes
+	v.Oc = OutputChange{}
+	b += OutputChangeRead(buf[b:], &v.Oc)
+
+	b = 0 // always read the same bytes
+	v.Op = OutputProperty{}
+	b += OutputPropertyRead(buf[b:], &v.Op)
+
+	b = 0 // always read the same bytes
+	v.Pc = ProviderChange{}
+	b += ProviderChangeRead(buf[b:], &v.Pc)
+
+	b = 0 // always read the same bytes
+	v.Pp = ProviderProperty{}
+	b += ProviderPropertyRead(buf[b:], &v.Pp)
+
+	b = 0 // always read the same bytes
+	v.Rc = ResourceChange{}
+	b += ResourceChangeRead(buf[b:], &v.Rc)
+
+	b = 0 // always read the same bytes
+	v.Lc = LeaseNotify{}
+	b += LeaseNotifyRead(buf[b:], &v.Lc)
+
 	return v
 }
 
@@ -884,6 +1189,10 @@ func NotifyDataUnionRead(buf []byte, v *NotifyDataUnion) int {
 	b = 0 // re-read the same bytes
 	v.Rc = ResourceChange{}
 	b += ResourceChangeRead(buf[b:], &v.Rc)
+
+	b = 0 // re-read the same bytes
+	v.Lc = LeaseNotify{}
+	b += LeaseNotifyRead(buf[b:], &v.Lc)
 
 	return 28
 }
@@ -933,6 +1242,7 @@ const (
 	NotifyMaskProviderChange   = 16
 	NotifyMaskProviderProperty = 32
 	NotifyMaskResourceChange   = 64
+	NotifyMaskLease            = 128
 )
 
 type Output uint32
@@ -2067,6 +2377,119 @@ func configureProviderPropertyRequest(c *xgb.Conn, Provider Provider, Property x
 	return buf
 }
 
+// CreateLeaseCookie is a cookie used only for CreateLease requests.
+type CreateLeaseCookie struct {
+	*xgb.Cookie
+}
+
+// CreateLease sends a checked request.
+// If an error occurs, it will be returned with the reply by calling CreateLeaseCookie.Reply()
+func CreateLease(c *xgb.Conn, Window xproto.Window, Lid Lease, NumCrtcs uint16, NumOutputs uint16, Crtcs []Crtc, Outputs []Output) CreateLeaseCookie {
+	c.ExtLock.RLock()
+	defer c.ExtLock.RUnlock()
+	if _, ok := c.Extensions["RANDR"]; !ok {
+		panic("Cannot issue request 'CreateLease' using the uninitialized extension 'RANDR'. randr.Init(connObj) must be called first.")
+	}
+	cookie := c.NewCookie(true, true)
+	c.NewRequest(createLeaseRequest(c, Window, Lid, NumCrtcs, NumOutputs, Crtcs, Outputs), cookie)
+	return CreateLeaseCookie{cookie}
+}
+
+// CreateLeaseUnchecked sends an unchecked request.
+// If an error occurs, it can only be retrieved using xgb.WaitForEvent or xgb.PollForEvent.
+func CreateLeaseUnchecked(c *xgb.Conn, Window xproto.Window, Lid Lease, NumCrtcs uint16, NumOutputs uint16, Crtcs []Crtc, Outputs []Output) CreateLeaseCookie {
+	c.ExtLock.RLock()
+	defer c.ExtLock.RUnlock()
+	if _, ok := c.Extensions["RANDR"]; !ok {
+		panic("Cannot issue request 'CreateLease' using the uninitialized extension 'RANDR'. randr.Init(connObj) must be called first.")
+	}
+	cookie := c.NewCookie(false, true)
+	c.NewRequest(createLeaseRequest(c, Window, Lid, NumCrtcs, NumOutputs, Crtcs, Outputs), cookie)
+	return CreateLeaseCookie{cookie}
+}
+
+// CreateLeaseReply represents the data returned from a CreateLease request.
+type CreateLeaseReply struct {
+	Sequence uint16 // sequence number of the request for this reply
+	Length   uint32 // number of bytes in this reply
+	Nfd      byte
+	// padding: 24 bytes
+}
+
+// Reply blocks and returns the reply data for a CreateLease request.
+func (cook CreateLeaseCookie) Reply() (*CreateLeaseReply, error) {
+	buf, err := cook.Cookie.Reply()
+	if err != nil {
+		return nil, err
+	}
+	if buf == nil {
+		return nil, nil
+	}
+	return createLeaseReply(buf), nil
+}
+
+// createLeaseReply reads a byte slice into a CreateLeaseReply value.
+func createLeaseReply(buf []byte) *CreateLeaseReply {
+	v := new(CreateLeaseReply)
+	b := 1 // skip reply determinant
+
+	v.Nfd = buf[b]
+	b += 1
+
+	v.Sequence = xgb.Get16(buf[b:])
+	b += 2
+
+	v.Length = xgb.Get32(buf[b:]) // 4-byte units
+	b += 4
+
+	b += 24 // padding
+
+	return v
+}
+
+// Write request to wire for CreateLease
+// createLeaseRequest writes a CreateLease request to a byte slice.
+func createLeaseRequest(c *xgb.Conn, Window xproto.Window, Lid Lease, NumCrtcs uint16, NumOutputs uint16, Crtcs []Crtc, Outputs []Output) []byte {
+	size := xgb.Pad(((16 + xgb.Pad((int(NumCrtcs) * 4))) + xgb.Pad((int(NumOutputs) * 4))))
+	b := 0
+	buf := make([]byte, size)
+
+	c.ExtLock.RLock()
+	buf[b] = c.Extensions["RANDR"]
+	c.ExtLock.RUnlock()
+	b += 1
+
+	buf[b] = 45 // request opcode
+	b += 1
+
+	xgb.Put16(buf[b:], uint16(size/4)) // write request size in 4-byte units
+	b += 2
+
+	xgb.Put32(buf[b:], uint32(Window))
+	b += 4
+
+	xgb.Put32(buf[b:], uint32(Lid))
+	b += 4
+
+	xgb.Put16(buf[b:], NumCrtcs)
+	b += 2
+
+	xgb.Put16(buf[b:], NumOutputs)
+	b += 2
+
+	for i := 0; i < int(NumCrtcs); i++ {
+		xgb.Put32(buf[b:], uint32(Crtcs[i]))
+		b += 4
+	}
+
+	for i := 0; i < int(NumOutputs); i++ {
+		xgb.Put32(buf[b:], uint32(Outputs[i]))
+		b += 4
+	}
+
+	return buf
+}
+
 // CreateModeCookie is a cookie used only for CreateMode requests.
 type CreateModeCookie struct {
 	*xgb.Cookie
@@ -2169,6 +2592,70 @@ func createModeRequest(c *xgb.Conn, Window xproto.Window, ModeInfo ModeInfo, Nam
 
 	copy(buf[b:], Name[:len(Name)])
 	b += int(len(Name))
+
+	return buf
+}
+
+// DeleteMonitorCookie is a cookie used only for DeleteMonitor requests.
+type DeleteMonitorCookie struct {
+	*xgb.Cookie
+}
+
+// DeleteMonitor sends an unchecked request.
+// If an error occurs, it can only be retrieved using xgb.WaitForEvent or xgb.PollForEvent.
+func DeleteMonitor(c *xgb.Conn, Window xproto.Window, Name xproto.Atom) DeleteMonitorCookie {
+	c.ExtLock.RLock()
+	defer c.ExtLock.RUnlock()
+	if _, ok := c.Extensions["RANDR"]; !ok {
+		panic("Cannot issue request 'DeleteMonitor' using the uninitialized extension 'RANDR'. randr.Init(connObj) must be called first.")
+	}
+	cookie := c.NewCookie(false, false)
+	c.NewRequest(deleteMonitorRequest(c, Window, Name), cookie)
+	return DeleteMonitorCookie{cookie}
+}
+
+// DeleteMonitorChecked sends a checked request.
+// If an error occurs, it can be retrieved using DeleteMonitorCookie.Check()
+func DeleteMonitorChecked(c *xgb.Conn, Window xproto.Window, Name xproto.Atom) DeleteMonitorCookie {
+	c.ExtLock.RLock()
+	defer c.ExtLock.RUnlock()
+	if _, ok := c.Extensions["RANDR"]; !ok {
+		panic("Cannot issue request 'DeleteMonitor' using the uninitialized extension 'RANDR'. randr.Init(connObj) must be called first.")
+	}
+	cookie := c.NewCookie(true, false)
+	c.NewRequest(deleteMonitorRequest(c, Window, Name), cookie)
+	return DeleteMonitorCookie{cookie}
+}
+
+// Check returns an error if one occurred for checked requests that are not expecting a reply.
+// This cannot be called for requests expecting a reply, nor for unchecked requests.
+func (cook DeleteMonitorCookie) Check() error {
+	return cook.Cookie.Check()
+}
+
+// Write request to wire for DeleteMonitor
+// deleteMonitorRequest writes a DeleteMonitor request to a byte slice.
+func deleteMonitorRequest(c *xgb.Conn, Window xproto.Window, Name xproto.Atom) []byte {
+	size := 12
+	b := 0
+	buf := make([]byte, size)
+
+	c.ExtLock.RLock()
+	buf[b] = c.Extensions["RANDR"]
+	c.ExtLock.RUnlock()
+	b += 1
+
+	buf[b] = 44 // request opcode
+	b += 1
+
+	xgb.Put16(buf[b:], uint16(size/4)) // write request size in 4-byte units
+	b += 2
+
+	xgb.Put32(buf[b:], uint32(Window))
+	b += 4
+
+	xgb.Put32(buf[b:], uint32(Name))
+	b += 4
 
 	return buf
 }
@@ -2426,6 +2913,70 @@ func destroyModeRequest(c *xgb.Conn, Mode Mode) []byte {
 	return buf
 }
 
+// FreeLeaseCookie is a cookie used only for FreeLease requests.
+type FreeLeaseCookie struct {
+	*xgb.Cookie
+}
+
+// FreeLease sends an unchecked request.
+// If an error occurs, it can only be retrieved using xgb.WaitForEvent or xgb.PollForEvent.
+func FreeLease(c *xgb.Conn, Lid Lease, Terminate byte) FreeLeaseCookie {
+	c.ExtLock.RLock()
+	defer c.ExtLock.RUnlock()
+	if _, ok := c.Extensions["RANDR"]; !ok {
+		panic("Cannot issue request 'FreeLease' using the uninitialized extension 'RANDR'. randr.Init(connObj) must be called first.")
+	}
+	cookie := c.NewCookie(false, false)
+	c.NewRequest(freeLeaseRequest(c, Lid, Terminate), cookie)
+	return FreeLeaseCookie{cookie}
+}
+
+// FreeLeaseChecked sends a checked request.
+// If an error occurs, it can be retrieved using FreeLeaseCookie.Check()
+func FreeLeaseChecked(c *xgb.Conn, Lid Lease, Terminate byte) FreeLeaseCookie {
+	c.ExtLock.RLock()
+	defer c.ExtLock.RUnlock()
+	if _, ok := c.Extensions["RANDR"]; !ok {
+		panic("Cannot issue request 'FreeLease' using the uninitialized extension 'RANDR'. randr.Init(connObj) must be called first.")
+	}
+	cookie := c.NewCookie(true, false)
+	c.NewRequest(freeLeaseRequest(c, Lid, Terminate), cookie)
+	return FreeLeaseCookie{cookie}
+}
+
+// Check returns an error if one occurred for checked requests that are not expecting a reply.
+// This cannot be called for requests expecting a reply, nor for unchecked requests.
+func (cook FreeLeaseCookie) Check() error {
+	return cook.Cookie.Check()
+}
+
+// Write request to wire for FreeLease
+// freeLeaseRequest writes a FreeLease request to a byte slice.
+func freeLeaseRequest(c *xgb.Conn, Lid Lease, Terminate byte) []byte {
+	size := 12
+	b := 0
+	buf := make([]byte, size)
+
+	c.ExtLock.RLock()
+	buf[b] = c.Extensions["RANDR"]
+	c.ExtLock.RUnlock()
+	b += 1
+
+	buf[b] = 46 // request opcode
+	b += 1
+
+	xgb.Put16(buf[b:], uint16(size/4)) // write request size in 4-byte units
+	b += 2
+
+	xgb.Put32(buf[b:], uint32(Lid))
+	b += 4
+
+	buf[b] = Terminate
+	b += 1
+
+	return buf
+}
+
 // GetCrtcGammaCookie is a cookie used only for GetCrtcGamma requests.
 type GetCrtcGammaCookie struct {
 	*xgb.Cookie
@@ -2464,11 +3015,9 @@ type GetCrtcGammaReply struct {
 	// padding: 1 bytes
 	Size uint16
 	// padding: 22 bytes
-	Red []uint16 // size: xgb.Pad((int(Size) * 2))
-	// alignment gap to multiple of 2
+	Red   []uint16 // size: xgb.Pad((int(Size) * 2))
 	Green []uint16 // size: xgb.Pad((int(Size) * 2))
-	// alignment gap to multiple of 2
-	Blue []uint16 // size: xgb.Pad((int(Size) * 2))
+	Blue  []uint16 // size: xgb.Pad((int(Size) * 2))
 }
 
 // Reply blocks and returns the reply data for a GetCrtcGamma request.
@@ -2507,15 +3056,11 @@ func getCrtcGammaReply(buf []byte) *GetCrtcGammaReply {
 		b += 2
 	}
 
-	b = (b + 1) & ^1 // alignment gap
-
 	v.Green = make([]uint16, v.Size)
 	for i := 0; i < int(v.Size); i++ {
 		v.Green[i] = xgb.Get16(buf[b:])
 		b += 2
 	}
-
-	b = (b + 1) & ^1 // alignment gap
 
 	v.Blue = make([]uint16, v.Size)
 	for i := 0; i < int(v.Size); i++ {
@@ -2694,8 +3239,7 @@ type GetCrtcInfoReply struct {
 	NumOutputs         uint16
 	NumPossibleOutputs uint16
 	Outputs            []Output // size: xgb.Pad((int(NumOutputs) * 4))
-	// alignment gap to multiple of 4
-	Possible []Output // size: xgb.Pad((int(NumPossibleOutputs) * 4))
+	Possible           []Output // size: xgb.Pad((int(NumPossibleOutputs) * 4))
 }
 
 // Reply blocks and returns the reply data for a GetCrtcInfo request.
@@ -2759,8 +3303,6 @@ func getCrtcInfoReply(buf []byte) *GetCrtcInfoReply {
 		v.Outputs[i] = Output(xgb.Get32(buf[b:]))
 		b += 4
 	}
-
-	b = (b + 3) & ^3 // alignment gap
 
 	v.Possible = make([]Output, v.NumPossibleOutputs)
 	for i := 0; i < int(v.NumPossibleOutputs); i++ {
@@ -2962,6 +3504,122 @@ func getCrtcTransformRequest(c *xgb.Conn, Crtc Crtc) []byte {
 	return buf
 }
 
+// GetMonitorsCookie is a cookie used only for GetMonitors requests.
+type GetMonitorsCookie struct {
+	*xgb.Cookie
+}
+
+// GetMonitors sends a checked request.
+// If an error occurs, it will be returned with the reply by calling GetMonitorsCookie.Reply()
+func GetMonitors(c *xgb.Conn, Window xproto.Window, GetActive bool) GetMonitorsCookie {
+	c.ExtLock.RLock()
+	defer c.ExtLock.RUnlock()
+	if _, ok := c.Extensions["RANDR"]; !ok {
+		panic("Cannot issue request 'GetMonitors' using the uninitialized extension 'RANDR'. randr.Init(connObj) must be called first.")
+	}
+	cookie := c.NewCookie(true, true)
+	c.NewRequest(getMonitorsRequest(c, Window, GetActive), cookie)
+	return GetMonitorsCookie{cookie}
+}
+
+// GetMonitorsUnchecked sends an unchecked request.
+// If an error occurs, it can only be retrieved using xgb.WaitForEvent or xgb.PollForEvent.
+func GetMonitorsUnchecked(c *xgb.Conn, Window xproto.Window, GetActive bool) GetMonitorsCookie {
+	c.ExtLock.RLock()
+	defer c.ExtLock.RUnlock()
+	if _, ok := c.Extensions["RANDR"]; !ok {
+		panic("Cannot issue request 'GetMonitors' using the uninitialized extension 'RANDR'. randr.Init(connObj) must be called first.")
+	}
+	cookie := c.NewCookie(false, true)
+	c.NewRequest(getMonitorsRequest(c, Window, GetActive), cookie)
+	return GetMonitorsCookie{cookie}
+}
+
+// GetMonitorsReply represents the data returned from a GetMonitors request.
+type GetMonitorsReply struct {
+	Sequence uint16 // sequence number of the request for this reply
+	Length   uint32 // number of bytes in this reply
+	// padding: 1 bytes
+	Timestamp xproto.Timestamp
+	NMonitors uint32
+	NOutputs  uint32
+	// padding: 12 bytes
+	Monitors []MonitorInfo // size: MonitorInfoListSize(Monitors)
+}
+
+// Reply blocks and returns the reply data for a GetMonitors request.
+func (cook GetMonitorsCookie) Reply() (*GetMonitorsReply, error) {
+	buf, err := cook.Cookie.Reply()
+	if err != nil {
+		return nil, err
+	}
+	if buf == nil {
+		return nil, nil
+	}
+	return getMonitorsReply(buf), nil
+}
+
+// getMonitorsReply reads a byte slice into a GetMonitorsReply value.
+func getMonitorsReply(buf []byte) *GetMonitorsReply {
+	v := new(GetMonitorsReply)
+	b := 1 // skip reply determinant
+
+	b += 1 // padding
+
+	v.Sequence = xgb.Get16(buf[b:])
+	b += 2
+
+	v.Length = xgb.Get32(buf[b:]) // 4-byte units
+	b += 4
+
+	v.Timestamp = xproto.Timestamp(xgb.Get32(buf[b:]))
+	b += 4
+
+	v.NMonitors = xgb.Get32(buf[b:])
+	b += 4
+
+	v.NOutputs = xgb.Get32(buf[b:])
+	b += 4
+
+	b += 12 // padding
+
+	v.Monitors = make([]MonitorInfo, v.NMonitors)
+	b += MonitorInfoReadList(buf[b:], v.Monitors)
+
+	return v
+}
+
+// Write request to wire for GetMonitors
+// getMonitorsRequest writes a GetMonitors request to a byte slice.
+func getMonitorsRequest(c *xgb.Conn, Window xproto.Window, GetActive bool) []byte {
+	size := 12
+	b := 0
+	buf := make([]byte, size)
+
+	c.ExtLock.RLock()
+	buf[b] = c.Extensions["RANDR"]
+	c.ExtLock.RUnlock()
+	b += 1
+
+	buf[b] = 42 // request opcode
+	b += 1
+
+	xgb.Put16(buf[b:], uint16(size/4)) // write request size in 4-byte units
+	b += 2
+
+	xgb.Put32(buf[b:], uint32(Window))
+	b += 4
+
+	if GetActive {
+		buf[b] = 1
+	} else {
+		buf[b] = 0
+	}
+	b += 1
+
+	return buf
+}
+
 // GetOutputInfoCookie is a cookie used only for GetOutputInfo requests.
 type GetOutputInfoCookie struct {
 	*xgb.Cookie
@@ -3009,12 +3667,10 @@ type GetOutputInfoReply struct {
 	NumPreferred  uint16
 	NumClones     uint16
 	NameLen       uint16
-	Crtcs         []Crtc // size: xgb.Pad((int(NumCrtcs) * 4))
-	// alignment gap to multiple of 4
-	Modes []Mode // size: xgb.Pad((int(NumModes) * 4))
-	// alignment gap to multiple of 4
-	Clones []Output // size: xgb.Pad((int(NumClones) * 4))
-	Name   []byte   // size: xgb.Pad((int(NameLen) * 1))
+	Crtcs         []Crtc   // size: xgb.Pad((int(NumCrtcs) * 4))
+	Modes         []Mode   // size: xgb.Pad((int(NumModes) * 4))
+	Clones        []Output // size: xgb.Pad((int(NumClones) * 4))
+	Name          []byte   // size: xgb.Pad((int(NameLen) * 1))
 }
 
 // Reply blocks and returns the reply data for a GetOutputInfo request.
@@ -3082,15 +3738,11 @@ func getOutputInfoReply(buf []byte) *GetOutputInfoReply {
 		b += 4
 	}
 
-	b = (b + 3) & ^3 // alignment gap
-
 	v.Modes = make([]Mode, v.NumModes)
 	for i := 0; i < int(v.NumModes); i++ {
 		v.Modes[i] = Mode(xgb.Get32(buf[b:]))
 		b += 4
 	}
-
-	b = (b + 3) & ^3 // alignment gap
 
 	v.Clones = make([]Output, v.NumClones)
 	for i := 0; i < int(v.NumClones); i++ {
@@ -3551,14 +4203,11 @@ type GetProviderInfoReply struct {
 	NumAssociatedProviders uint16
 	NameLen                uint16
 	// padding: 8 bytes
-	Crtcs []Crtc // size: xgb.Pad((int(NumCrtcs) * 4))
-	// alignment gap to multiple of 4
-	Outputs []Output // size: xgb.Pad((int(NumOutputs) * 4))
-	// alignment gap to multiple of 4
-	AssociatedProviders []Provider // size: xgb.Pad((int(NumAssociatedProviders) * 4))
-	// alignment gap to multiple of 4
-	AssociatedCapability []uint32 // size: xgb.Pad((int(NumAssociatedProviders) * 4))
-	Name                 string   // size: xgb.Pad((int(NameLen) * 1))
+	Crtcs                []Crtc     // size: xgb.Pad((int(NumCrtcs) * 4))
+	Outputs              []Output   // size: xgb.Pad((int(NumOutputs) * 4))
+	AssociatedProviders  []Provider // size: xgb.Pad((int(NumAssociatedProviders) * 4))
+	AssociatedCapability []uint32   // size: xgb.Pad((int(NumAssociatedProviders) * 4))
+	Name                 string     // size: xgb.Pad((int(NameLen) * 1))
 }
 
 // Reply blocks and returns the reply data for a GetProviderInfo request.
@@ -3613,23 +4262,17 @@ func getProviderInfoReply(buf []byte) *GetProviderInfoReply {
 		b += 4
 	}
 
-	b = (b + 3) & ^3 // alignment gap
-
 	v.Outputs = make([]Output, v.NumOutputs)
 	for i := 0; i < int(v.NumOutputs); i++ {
 		v.Outputs[i] = Output(xgb.Get32(buf[b:]))
 		b += 4
 	}
 
-	b = (b + 3) & ^3 // alignment gap
-
 	v.AssociatedProviders = make([]Provider, v.NumAssociatedProviders)
 	for i := 0; i < int(v.NumAssociatedProviders); i++ {
 		v.AssociatedProviders[i] = Provider(xgb.Get32(buf[b:]))
 		b += 4
 	}
-
-	b = (b + 3) & ^3 // alignment gap
 
 	v.AssociatedCapability = make([]uint32, v.NumAssociatedProviders)
 	for i := 0; i < int(v.NumAssociatedProviders); i++ {
@@ -3966,8 +4609,7 @@ type GetScreenInfoReply struct {
 	Rate            uint16
 	NInfo           uint16
 	// padding: 2 bytes
-	Sizes []ScreenSize // size: xgb.Pad((int(NSizes) * 8))
-	// alignment gap to multiple of 2
+	Sizes []ScreenSize   // size: xgb.Pad((int(NSizes) * 8))
 	Rates []RefreshRates // size: RefreshRatesListSize(Rates)
 }
 
@@ -4025,8 +4667,6 @@ func getScreenInfoReply(buf []byte) *GetScreenInfoReply {
 
 	v.Sizes = make([]ScreenSize, v.NSizes)
 	b += ScreenSizeReadList(buf[b:], v.Sizes)
-
-	b = (b + 1) & ^1 // alignment gap
 
 	v.Rates = make([]RefreshRates, (int(v.NInfo) - int(v.NSizes)))
 	b += RefreshRatesReadList(buf[b:], v.Rates)
@@ -4101,12 +4741,10 @@ type GetScreenResourcesReply struct {
 	NumModes        uint16
 	NamesLen        uint16
 	// padding: 8 bytes
-	Crtcs []Crtc // size: xgb.Pad((int(NumCrtcs) * 4))
-	// alignment gap to multiple of 4
-	Outputs []Output // size: xgb.Pad((int(NumOutputs) * 4))
-	// alignment gap to multiple of 4
-	Modes []ModeInfo // size: xgb.Pad((int(NumModes) * 32))
-	Names []byte     // size: xgb.Pad((int(NamesLen) * 1))
+	Crtcs   []Crtc     // size: xgb.Pad((int(NumCrtcs) * 4))
+	Outputs []Output   // size: xgb.Pad((int(NumOutputs) * 4))
+	Modes   []ModeInfo // size: xgb.Pad((int(NumModes) * 32))
+	Names   []byte     // size: xgb.Pad((int(NamesLen) * 1))
 }
 
 // Reply blocks and returns the reply data for a GetScreenResources request.
@@ -4160,15 +4798,11 @@ func getScreenResourcesReply(buf []byte) *GetScreenResourcesReply {
 		b += 4
 	}
 
-	b = (b + 3) & ^3 // alignment gap
-
 	v.Outputs = make([]Output, v.NumOutputs)
 	for i := 0; i < int(v.NumOutputs); i++ {
 		v.Outputs[i] = Output(xgb.Get32(buf[b:]))
 		b += 4
 	}
-
-	b = (b + 3) & ^3 // alignment gap
 
 	v.Modes = make([]ModeInfo, v.NumModes)
 	b += ModeInfoReadList(buf[b:], v.Modes)
@@ -4247,12 +4881,10 @@ type GetScreenResourcesCurrentReply struct {
 	NumModes        uint16
 	NamesLen        uint16
 	// padding: 8 bytes
-	Crtcs []Crtc // size: xgb.Pad((int(NumCrtcs) * 4))
-	// alignment gap to multiple of 4
-	Outputs []Output // size: xgb.Pad((int(NumOutputs) * 4))
-	// alignment gap to multiple of 4
-	Modes []ModeInfo // size: xgb.Pad((int(NumModes) * 32))
-	Names []byte     // size: xgb.Pad((int(NamesLen) * 1))
+	Crtcs   []Crtc     // size: xgb.Pad((int(NumCrtcs) * 4))
+	Outputs []Output   // size: xgb.Pad((int(NumOutputs) * 4))
+	Modes   []ModeInfo // size: xgb.Pad((int(NumModes) * 32))
+	Names   []byte     // size: xgb.Pad((int(NamesLen) * 1))
 }
 
 // Reply blocks and returns the reply data for a GetScreenResourcesCurrent request.
@@ -4306,15 +4938,11 @@ func getScreenResourcesCurrentReply(buf []byte) *GetScreenResourcesCurrentReply 
 		b += 4
 	}
 
-	b = (b + 3) & ^3 // alignment gap
-
 	v.Outputs = make([]Output, v.NumOutputs)
 	for i := 0; i < int(v.NumOutputs); i++ {
 		v.Outputs[i] = Output(xgb.Get32(buf[b:]))
 		b += 4
 	}
-
-	b = (b + 3) & ^3 // alignment gap
 
 	v.Modes = make([]ModeInfo, v.NumModes)
 	b += ModeInfoReadList(buf[b:], v.Modes)
@@ -5254,7 +5882,7 @@ func (cook SetCrtcGammaCookie) Check() error {
 // Write request to wire for SetCrtcGamma
 // setCrtcGammaRequest writes a SetCrtcGamma request to a byte slice.
 func setCrtcGammaRequest(c *xgb.Conn, Crtc Crtc, Size uint16, Red []uint16, Green []uint16, Blue []uint16) []byte {
-	size := xgb.Pad((((((12 + xgb.Pad((int(Size) * 2))) + 2) + xgb.Pad((int(Size) * 2))) + 2) + xgb.Pad((int(Size) * 2))))
+	size := xgb.Pad((((12 + xgb.Pad((int(Size) * 2))) + xgb.Pad((int(Size) * 2))) + xgb.Pad((int(Size) * 2))))
 	b := 0
 	buf := make([]byte, size)
 
@@ -5266,7 +5894,7 @@ func setCrtcGammaRequest(c *xgb.Conn, Crtc Crtc, Size uint16, Red []uint16, Gree
 	buf[b] = 24 // request opcode
 	b += 1
 
-	blen := b
+	xgb.Put16(buf[b:], uint16(size/4)) // write request size in 4-byte units
 	b += 2
 
 	xgb.Put32(buf[b:], uint32(Crtc))
@@ -5282,23 +5910,17 @@ func setCrtcGammaRequest(c *xgb.Conn, Crtc Crtc, Size uint16, Red []uint16, Gree
 		b += 2
 	}
 
-	b = (b + 1) & ^1 // alignment gap
-
 	for i := 0; i < int(Size); i++ {
 		xgb.Put16(buf[b:], Green[i])
 		b += 2
 	}
-
-	b = (b + 1) & ^1 // alignment gap
 
 	for i := 0; i < int(Size); i++ {
 		xgb.Put16(buf[b:], Blue[i])
 		b += 2
 	}
 
-	b = xgb.Pad(b)
-	xgb.Put16(buf[blen:], uint16(b/4)) // write request size in 4-byte units
-	return buf[:b]
+	return buf
 }
 
 // SetCrtcTransformCookie is a cookie used only for SetCrtcTransform requests.
@@ -5383,6 +6005,73 @@ func setCrtcTransformRequest(c *xgb.Conn, Crtc Crtc, Transform render.Transform,
 	b = xgb.Pad(b)
 	xgb.Put16(buf[blen:], uint16(b/4)) // write request size in 4-byte units
 	return buf[:b]
+}
+
+// SetMonitorCookie is a cookie used only for SetMonitor requests.
+type SetMonitorCookie struct {
+	*xgb.Cookie
+}
+
+// SetMonitor sends an unchecked request.
+// If an error occurs, it can only be retrieved using xgb.WaitForEvent or xgb.PollForEvent.
+func SetMonitor(c *xgb.Conn, Window xproto.Window, Monitorinfo MonitorInfo) SetMonitorCookie {
+	c.ExtLock.RLock()
+	defer c.ExtLock.RUnlock()
+	if _, ok := c.Extensions["RANDR"]; !ok {
+		panic("Cannot issue request 'SetMonitor' using the uninitialized extension 'RANDR'. randr.Init(connObj) must be called first.")
+	}
+	cookie := c.NewCookie(false, false)
+	c.NewRequest(setMonitorRequest(c, Window, Monitorinfo), cookie)
+	return SetMonitorCookie{cookie}
+}
+
+// SetMonitorChecked sends a checked request.
+// If an error occurs, it can be retrieved using SetMonitorCookie.Check()
+func SetMonitorChecked(c *xgb.Conn, Window xproto.Window, Monitorinfo MonitorInfo) SetMonitorCookie {
+	c.ExtLock.RLock()
+	defer c.ExtLock.RUnlock()
+	if _, ok := c.Extensions["RANDR"]; !ok {
+		panic("Cannot issue request 'SetMonitor' using the uninitialized extension 'RANDR'. randr.Init(connObj) must be called first.")
+	}
+	cookie := c.NewCookie(true, false)
+	c.NewRequest(setMonitorRequest(c, Window, Monitorinfo), cookie)
+	return SetMonitorCookie{cookie}
+}
+
+// Check returns an error if one occurred for checked requests that are not expecting a reply.
+// This cannot be called for requests expecting a reply, nor for unchecked requests.
+func (cook SetMonitorCookie) Check() error {
+	return cook.Cookie.Check()
+}
+
+// Write request to wire for SetMonitor
+// setMonitorRequest writes a SetMonitor request to a byte slice.
+func setMonitorRequest(c *xgb.Conn, Window xproto.Window, Monitorinfo MonitorInfo) []byte {
+	size := xgb.Pad((8 + (24 + xgb.Pad((int(Monitorinfo.NOutput) * 4)))))
+	b := 0
+	buf := make([]byte, size)
+
+	c.ExtLock.RLock()
+	buf[b] = c.Extensions["RANDR"]
+	c.ExtLock.RUnlock()
+	b += 1
+
+	buf[b] = 43 // request opcode
+	b += 1
+
+	xgb.Put16(buf[b:], uint16(size/4)) // write request size in 4-byte units
+	b += 2
+
+	xgb.Put32(buf[b:], uint32(Window))
+	b += 4
+
+	{
+		structBytes := Monitorinfo.Bytes()
+		copy(buf[b:], structBytes)
+		b += len(structBytes)
+	}
+
+	return buf
 }
 
 // SetOutputPrimaryCookie is a cookie used only for SetOutputPrimary requests.

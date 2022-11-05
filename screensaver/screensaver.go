@@ -513,7 +513,7 @@ func (cook SetAttributesCookie) Check() error {
 // Write request to wire for SetAttributes
 // setAttributesRequest writes a SetAttributes request to a byte slice.
 func setAttributesRequest(c *xgb.Conn, Drawable xproto.Drawable, X int16, Y int16, Width uint16, Height uint16, BorderWidth uint16, Class byte, Depth byte, Visual xproto.Visualid, ValueMask uint32, ValueList []uint32) []byte {
-	size := xgb.Pad((24 + (4 + xgb.Pad((4 * xgb.PopCount(int(ValueMask)))))))
+	size := xgb.Pad((28 + xgb.Pad((4 * xgb.PopCount(int(ValueMask))))))
 	b := 0
 	buf := make([]byte, size)
 
@@ -557,6 +557,7 @@ func setAttributesRequest(c *xgb.Conn, Drawable xproto.Drawable, X int16, Y int1
 
 	xgb.Put32(buf[b:], ValueMask)
 	b += 4
+
 	for i := 0; i < xgb.PopCount(int(ValueMask)); i++ {
 		xgb.Put32(buf[b:], ValueList[i])
 		b += 4
@@ -573,7 +574,7 @@ type SuspendCookie struct {
 
 // Suspend sends an unchecked request.
 // If an error occurs, it can only be retrieved using xgb.WaitForEvent or xgb.PollForEvent.
-func Suspend(c *xgb.Conn, Suspend bool) SuspendCookie {
+func Suspend(c *xgb.Conn, Suspend uint32) SuspendCookie {
 	c.ExtLock.RLock()
 	defer c.ExtLock.RUnlock()
 	if _, ok := c.Extensions["MIT-SCREEN-SAVER"]; !ok {
@@ -586,7 +587,7 @@ func Suspend(c *xgb.Conn, Suspend bool) SuspendCookie {
 
 // SuspendChecked sends a checked request.
 // If an error occurs, it can be retrieved using SuspendCookie.Check()
-func SuspendChecked(c *xgb.Conn, Suspend bool) SuspendCookie {
+func SuspendChecked(c *xgb.Conn, Suspend uint32) SuspendCookie {
 	c.ExtLock.RLock()
 	defer c.ExtLock.RUnlock()
 	if _, ok := c.Extensions["MIT-SCREEN-SAVER"]; !ok {
@@ -605,7 +606,7 @@ func (cook SuspendCookie) Check() error {
 
 // Write request to wire for Suspend
 // suspendRequest writes a Suspend request to a byte slice.
-func suspendRequest(c *xgb.Conn, Suspend bool) []byte {
+func suspendRequest(c *xgb.Conn, Suspend uint32) []byte {
 	size := 8
 	b := 0
 	buf := make([]byte, size)
@@ -621,14 +622,8 @@ func suspendRequest(c *xgb.Conn, Suspend bool) []byte {
 	xgb.Put16(buf[b:], uint16(size/4)) // write request size in 4-byte units
 	b += 2
 
-	if Suspend {
-		buf[b] = 1
-	} else {
-		buf[b] = 0
-	}
-	b += 1
-
-	b += 3 // padding
+	xgb.Put32(buf[b:], Suspend)
+	b += 4
 
 	return buf
 }

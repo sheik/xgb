@@ -317,10 +317,12 @@ func NewPcontextId(c *xgb.Conn) (Pcontext, error) {
 }
 
 type Printer struct {
-	NameLen     uint32
-	Name        []String8 // size: xgb.Pad((int(NameLen) * 1))
+	NameLen uint32
+	Name    []String8 // size: xgb.Pad((int(NameLen) * 1))
+	// alignment gap to multiple of 4
 	DescLen     uint32
 	Description []String8 // size: xgb.Pad((int(DescLen) * 1))
+	// alignment gap to multiple of 4
 }
 
 // PrinterRead reads a byte slice into a Printer value.
@@ -336,6 +338,8 @@ func PrinterRead(buf []byte, v *Printer) int {
 		b += 1
 	}
 
+	b = (b + 3) & ^3 // alignment gap
+
 	v.DescLen = xgb.Get32(buf[b:])
 	b += 4
 
@@ -344,6 +348,8 @@ func PrinterRead(buf []byte, v *Printer) int {
 		v.Description[i] = String8(buf[b])
 		b += 1
 	}
+
+	b = (b + 3) & ^3 // alignment gap
 
 	return b
 }
@@ -360,7 +366,7 @@ func PrinterReadList(buf []byte, dest []Printer) int {
 
 // Bytes writes a Printer value to a byte slice.
 func (v Printer) Bytes() []byte {
-	buf := make([]byte, (((4 + xgb.Pad((int(v.NameLen) * 1))) + 4) + xgb.Pad((int(v.DescLen) * 1))))
+	buf := make([]byte, (((((4 + xgb.Pad((int(v.NameLen) * 1))) + 4) + 4) + xgb.Pad((int(v.DescLen) * 1))) + 4))
 	b := 0
 
 	xgb.Put32(buf[b:], v.NameLen)
@@ -371,6 +377,8 @@ func (v Printer) Bytes() []byte {
 		b += 1
 	}
 
+	b = (b + 3) & ^3 // alignment gap
+
 	xgb.Put32(buf[b:], v.DescLen)
 	b += 4
 
@@ -378,6 +386,8 @@ func (v Printer) Bytes() []byte {
 		buf[b] = byte(v.Description[i])
 		b += 1
 	}
+
+	b = (b + 3) & ^3 // alignment gap
 
 	return buf[:b]
 }
@@ -398,7 +408,7 @@ func PrinterListBytes(buf []byte, list []Printer) int {
 func PrinterListSize(list []Printer) int {
 	size := 0
 	for _, item := range list {
-		size += (((4 + xgb.Pad((int(item.NameLen) * 1))) + 4) + xgb.Pad((int(item.DescLen) * 1)))
+		size += (((((4 + xgb.Pad((int(item.NameLen) * 1))) + 4) + 4) + xgb.Pad((int(item.DescLen) * 1))) + 4)
 	}
 	return size
 }
@@ -469,7 +479,7 @@ func (cook CreateContextCookie) Check() error {
 // Write request to wire for CreateContext
 // createContextRequest writes a CreateContext request to a byte slice.
 func createContextRequest(c *xgb.Conn, ContextId uint32, PrinterNameLen uint32, LocaleLen uint32, PrinterName []String8, Locale []String8) []byte {
-	size := xgb.Pad(((16 + xgb.Pad((int(PrinterNameLen) * 1))) + xgb.Pad((int(LocaleLen) * 1))))
+	size := xgb.Pad((((16 + xgb.Pad((int(PrinterNameLen) * 1))) + 4) + xgb.Pad((int(LocaleLen) * 1))))
 	b := 0
 	buf := make([]byte, size)
 
@@ -481,7 +491,7 @@ func createContextRequest(c *xgb.Conn, ContextId uint32, PrinterNameLen uint32, 
 	buf[b] = 2 // request opcode
 	b += 1
 
-	xgb.Put16(buf[b:], uint16(size/4)) // write request size in 4-byte units
+	blen := b
 	b += 2
 
 	xgb.Put32(buf[b:], ContextId)
@@ -498,12 +508,16 @@ func createContextRequest(c *xgb.Conn, ContextId uint32, PrinterNameLen uint32, 
 		b += 1
 	}
 
+	b = (b + 3) & ^3 // alignment gap
+
 	for i := 0; i < int(LocaleLen); i++ {
 		buf[b] = byte(Locale[i])
 		b += 1
 	}
 
-	return buf
+	b = xgb.Pad(b)
+	xgb.Put16(buf[blen:], uint16(b/4)) // write request size in 4-byte units
+	return buf[:b]
 }
 
 // PrintDestroyContextCookie is a cookie used only for PrintDestroyContext requests.
@@ -1482,7 +1496,7 @@ func printGetPrinterListReply(buf []byte) *PrintGetPrinterListReply {
 // Write request to wire for PrintGetPrinterList
 // printGetPrinterListRequest writes a PrintGetPrinterList request to a byte slice.
 func printGetPrinterListRequest(c *xgb.Conn, PrinterNameLen uint32, LocaleLen uint32, PrinterName []String8, Locale []String8) []byte {
-	size := xgb.Pad(((12 + xgb.Pad((int(PrinterNameLen) * 1))) + xgb.Pad((int(LocaleLen) * 1))))
+	size := xgb.Pad((((12 + xgb.Pad((int(PrinterNameLen) * 1))) + 4) + xgb.Pad((int(LocaleLen) * 1))))
 	b := 0
 	buf := make([]byte, size)
 
@@ -1494,7 +1508,7 @@ func printGetPrinterListRequest(c *xgb.Conn, PrinterNameLen uint32, LocaleLen ui
 	buf[b] = 1 // request opcode
 	b += 1
 
-	xgb.Put16(buf[b:], uint16(size/4)) // write request size in 4-byte units
+	blen := b
 	b += 2
 
 	xgb.Put32(buf[b:], PrinterNameLen)
@@ -1508,12 +1522,16 @@ func printGetPrinterListRequest(c *xgb.Conn, PrinterNameLen uint32, LocaleLen ui
 		b += 1
 	}
 
+	b = (b + 3) & ^3 // alignment gap
+
 	for i := 0; i < int(LocaleLen); i++ {
 		buf[b] = byte(Locale[i])
 		b += 1
 	}
 
-	return buf
+	b = xgb.Pad(b)
+	xgb.Put16(buf[blen:], uint16(b/4)) // write request size in 4-byte units
+	return buf[:b]
 }
 
 // PrintGetScreenOfContextCookie is a cookie used only for PrintGetScreenOfContext requests.
@@ -1644,9 +1662,7 @@ type PrintInputSelectedReply struct {
 	Length   uint32 // number of bytes in this reply
 	// padding: 1 bytes
 	EventMask     uint32
-	EventList     []uint32
 	AllEventsMask uint32
-	AllEventsList []uint32
 }
 
 // Reply blocks and returns the reply data for a PrintInputSelected request.
@@ -1677,22 +1693,8 @@ func printInputSelectedReply(buf []byte) *PrintInputSelectedReply {
 	v.EventMask = xgb.Get32(buf[b:])
 	b += 4
 
-	v.EventList = make([]uint32, xgb.PopCount(int(v.EventMask)))
-	for i := 0; i < xgb.PopCount(int(v.EventMask)); i++ {
-		v.EventList[i] = xgb.Get32(buf[b:])
-		b += 4
-	}
-	b = xgb.Pad(b)
-
 	v.AllEventsMask = xgb.Get32(buf[b:])
 	b += 4
-
-	v.AllEventsList = make([]uint32, xgb.PopCount(int(v.AllEventsMask)))
-	for i := 0; i < xgb.PopCount(int(v.AllEventsMask)); i++ {
-		v.AllEventsList[i] = xgb.Get32(buf[b:])
-		b += 4
-	}
-	b = xgb.Pad(b)
 
 	return v
 }
@@ -1761,7 +1763,7 @@ func (cook PrintPutDocumentDataCookie) Check() error {
 // Write request to wire for PrintPutDocumentData
 // printPutDocumentDataRequest writes a PrintPutDocumentData request to a byte slice.
 func printPutDocumentDataRequest(c *xgb.Conn, Drawable xproto.Drawable, LenData uint32, LenFmt uint16, LenOptions uint16, Data []byte, DocFormat []String8, Options []String8) []byte {
-	size := xgb.Pad((((16 + xgb.Pad((int(LenData) * 1))) + xgb.Pad((len(DocFormat) * 1))) + xgb.Pad((len(Options) * 1))))
+	size := xgb.Pad((((((16 + xgb.Pad((int(LenData) * 1))) + 4) + xgb.Pad((int(LenFmt) * 1))) + 4) + xgb.Pad((int(LenOptions) * 1))))
 	b := 0
 	buf := make([]byte, size)
 
@@ -1773,7 +1775,7 @@ func printPutDocumentDataRequest(c *xgb.Conn, Drawable xproto.Drawable, LenData 
 	buf[b] = 11 // request opcode
 	b += 1
 
-	xgb.Put16(buf[b:], uint16(size/4)) // write request size in 4-byte units
+	blen := b
 	b += 2
 
 	xgb.Put32(buf[b:], uint32(Drawable))
@@ -1791,17 +1793,23 @@ func printPutDocumentDataRequest(c *xgb.Conn, Drawable xproto.Drawable, LenData 
 	copy(buf[b:], Data[:LenData])
 	b += int(LenData)
 
-	for i := 0; i < int(len(DocFormat)); i++ {
+	b = (b + 3) & ^3 // alignment gap
+
+	for i := 0; i < int(LenFmt); i++ {
 		buf[b] = byte(DocFormat[i])
 		b += 1
 	}
 
-	for i := 0; i < int(len(Options)); i++ {
+	b = (b + 3) & ^3 // alignment gap
+
+	for i := 0; i < int(LenOptions); i++ {
 		buf[b] = byte(Options[i])
 		b += 1
 	}
 
-	return buf
+	b = xgb.Pad(b)
+	xgb.Put16(buf[blen:], uint16(b/4)) // write request size in 4-byte units
+	return buf[:b]
 }
 
 // PrintQueryScreensCookie is a cookie used only for PrintQueryScreens requests.
@@ -2065,27 +2073,27 @@ type PrintSelectInputCookie struct {
 
 // PrintSelectInput sends an unchecked request.
 // If an error occurs, it can only be retrieved using xgb.WaitForEvent or xgb.PollForEvent.
-func PrintSelectInput(c *xgb.Conn, Context Pcontext, EventMask uint32, EventList []uint32) PrintSelectInputCookie {
+func PrintSelectInput(c *xgb.Conn, Context Pcontext, EventMask uint32) PrintSelectInputCookie {
 	c.ExtLock.RLock()
 	defer c.ExtLock.RUnlock()
 	if _, ok := c.Extensions["XpExtension"]; !ok {
 		panic("Cannot issue request 'PrintSelectInput' using the uninitialized extension 'XpExtension'. xprint.Init(connObj) must be called first.")
 	}
 	cookie := c.NewCookie(false, false)
-	c.NewRequest(printSelectInputRequest(c, Context, EventMask, EventList), cookie)
+	c.NewRequest(printSelectInputRequest(c, Context, EventMask), cookie)
 	return PrintSelectInputCookie{cookie}
 }
 
 // PrintSelectInputChecked sends a checked request.
 // If an error occurs, it can be retrieved using PrintSelectInputCookie.Check()
-func PrintSelectInputChecked(c *xgb.Conn, Context Pcontext, EventMask uint32, EventList []uint32) PrintSelectInputCookie {
+func PrintSelectInputChecked(c *xgb.Conn, Context Pcontext, EventMask uint32) PrintSelectInputCookie {
 	c.ExtLock.RLock()
 	defer c.ExtLock.RUnlock()
 	if _, ok := c.Extensions["XpExtension"]; !ok {
 		panic("Cannot issue request 'PrintSelectInput' using the uninitialized extension 'XpExtension'. xprint.Init(connObj) must be called first.")
 	}
 	cookie := c.NewCookie(true, false)
-	c.NewRequest(printSelectInputRequest(c, Context, EventMask, EventList), cookie)
+	c.NewRequest(printSelectInputRequest(c, Context, EventMask), cookie)
 	return PrintSelectInputCookie{cookie}
 }
 
@@ -2097,8 +2105,8 @@ func (cook PrintSelectInputCookie) Check() error {
 
 // Write request to wire for PrintSelectInput
 // printSelectInputRequest writes a PrintSelectInput request to a byte slice.
-func printSelectInputRequest(c *xgb.Conn, Context Pcontext, EventMask uint32, EventList []uint32) []byte {
-	size := xgb.Pad((8 + (4 + xgb.Pad((4 * xgb.PopCount(int(EventMask)))))))
+func printSelectInputRequest(c *xgb.Conn, Context Pcontext, EventMask uint32) []byte {
+	size := 12
 	b := 0
 	buf := make([]byte, size)
 
@@ -2118,11 +2126,6 @@ func printSelectInputRequest(c *xgb.Conn, Context Pcontext, EventMask uint32, Ev
 
 	xgb.Put32(buf[b:], EventMask)
 	b += 4
-	for i := 0; i < xgb.PopCount(int(EventMask)); i++ {
-		xgb.Put32(buf[b:], EventList[i])
-		b += 4
-	}
-	b = xgb.Pad(b)
 
 	return buf
 }
