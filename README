@@ -14,8 +14,8 @@ This is a fork of github.com/BurntSushi/xgb
 
 Quick Usage
 ===========
-go get github.com/jezek/xgb
-go run go/path/src/github.com/jezek/xgb/examples/create-window/main.go
+go get github.com/sheik/xgb
+go run go/path/src/github.com/sheik/xgb/examples/create-window/main.go
 
 jezek's Fork
 ============

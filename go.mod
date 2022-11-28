@@ -1,3 +1,3 @@
-module github.com/jezek/xgb
+module github.com/sheik/xgb
 
 go 1.11

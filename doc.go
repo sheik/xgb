@@ -10,7 +10,7 @@ Most uses of XGB typically fall under the realm of window manager and GUI kit
 development, but other applications (like pagers, panels, tilers, etc.) may
 also require XGB. Moreover, it is a near certainty that if you need to work
 with X, xgbutil will be of great use to you as well:
-https://github.com/jezek/xgbutil
+https://github.com/sheik/xgbutil
 
 Example
 
@@ -23,8 +23,8 @@ accompanying documentation can be found in examples/create-window.
 
 	import (
 		"fmt"
-		"github.com/jezek/xgb"
-		"github.com/jezek/xgb/xproto"
+		"github.com/sheik/xgb"
+		"github.com/sheik/xgb/xproto"
 	)
 
 	func main() {
@@ -74,8 +74,8 @@ can be found in examples/xinerama.
 	import (
 		"fmt"
 		"log"
-		"github.com/jezek/xgb"
-		"github.com/jezek/xgb/xinerama"
+		"github.com/sheik/xgb"
+		"github.com/sheik/xgb/xinerama"
 	)
 
 	func main() {

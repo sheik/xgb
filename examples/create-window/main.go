@@ -7,8 +7,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/jezek/xgb"
-	"github.com/jezek/xgb/xproto"
+	"github.com/sheik/xgb"
+	"github.com/sheik/xgb/xproto"
 )
 
 func main() {
@@ -113,7 +113,7 @@ func main() {
 		// either xproto.CreateWindow or xproto.ChangeWindowAttributes.
 		switch ev.(type) {
 		case xproto.KeyPressEvent:
-			// See https://pkg.go.dev/github.com/jezek/xgb/xproto#KeyPressEvent
+			// See https://pkg.go.dev/github.com/sheik/xgb/xproto#KeyPressEvent
 			// for documentation about a key press event.
 			kpe := ev.(xproto.KeyPressEvent)
 			fmt.Printf("Key pressed: %d\n", kpe.Detail)
@@ -141,7 +141,7 @@ func main() {
 			//
 			// For more information about closing windows while maintaining
 			// the X connection see
-			// https://github.com/jezek/xgbutil/blob/master/_examples/graceful-window-close/main.go
+			// https://github.com/sheik/xgbutil/blob/master/_examples/graceful-window-close/main.go
 			return
 		}
 	}
